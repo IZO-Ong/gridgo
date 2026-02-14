@@ -8,13 +8,26 @@ export default function MazeCanvas({ maze }: { maze: any }) {
 
   useEffect(() => {
     if (!containerRef.current || !maze) return;
-    const updateSize = () => {
-      const containerWidth = containerRef.current!.offsetWidth - 32;
-      setDynamicCellSize(containerWidth / maze.cols);
-    };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+
+      const { width, height } = entry.contentRect;
+
+      const innerWidth = width - 64;
+      const innerHeight = height - 64;
+
+      const cellW = innerWidth / maze.cols;
+      const cellH = innerHeight / maze.rows;
+
+      setDynamicCellSize(Math.min(cellW, cellH));
+    });
+
+    const parent = containerRef.current.closest("section");
+    if (parent) observer.observe(parent);
+
+    return () => observer.disconnect();
   }, [maze]);
 
   useEffect(() => {

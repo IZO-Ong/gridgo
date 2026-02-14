@@ -68,7 +68,7 @@ export default function Home() {
                 max="500"
                 value={dims.rows}
                 onChange={(e) => updateDim("rows", e.target.value)}
-                onBlur={clampDimensions} // Snaps manual input into [2, 500]
+                onBlur={clampDimensions}
                 className="w-full p-2 outline-none focus:bg-zinc-100 bg-transparent transition-colors"
               />
               <input
@@ -124,11 +124,13 @@ export default function Home() {
           </div>
         )}
 
-        <section className="border-4 border-black min-h-[600px] flex items-center justify-center p-4 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] shadow-inner">
+        <section className="border-4 border-black h-[80vh] min-h-[500px] overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] flex items-center justify-center p-8 shadow-inner relative">
           {maze ? (
-            <MazeCanvas maze={maze} />
+            <div className="w-full h-full flex items-center justify-center">
+              <MazeCanvas maze={maze} />
+            </div>
           ) : (
-            <p className="opacity-20 tracking-[0.3em] font-bold uppercase">
+            <p className="opacity-20 tracking-[0.3em] font-bold uppercase select-none">
               System_Idle
             </p>
           )}

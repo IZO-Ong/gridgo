@@ -26,7 +26,6 @@ export default function Home() {
     try {
       const formData = new FormData(e.currentTarget);
 
-      // Client-side validation
       if (genType === "image" && !formData.get("image")) {
         throw new Error("IMAGE_REQUIRED");
       }
@@ -36,7 +35,6 @@ export default function Home() {
       setError(null);
     } catch (err: any) {
       const errorMessage = err.message || "SYSTEM_FAILURE";
-
       if (errorMessage !== error) {
         setError(errorMessage);
       }
@@ -113,8 +111,8 @@ export default function Home() {
           <button
             type="submit"
             disabled={loading}
-            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all
-              ${loading ? "bg-zinc-200" : "bg-white hover:bg-black hover:text-white"}`}
+            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex justify-start pl-8 cursor-pointer
+              ${loading ? "bg-zinc-200 cursor-wait text-zinc-500" : "bg-white hover:bg-black hover:text-white"}`}
           >
             {loading ? ">>> PROCESSING_BUFFER..." : ">>> EXECUTE_GENERATION"}
           </button>

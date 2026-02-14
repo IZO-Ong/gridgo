@@ -7,7 +7,6 @@ import (
 	_ "image/png"
 	"io"
 	"math"
-	"os"
 	"runtime"
 	"sync"
 )
@@ -31,18 +30,6 @@ func GetEdgeWeights(r io.Reader, rows, cols int) (map[string]int, error) {
 	weights := mapToWeights(nmsMags, rows, cols, width, height)
 
 	return weights, nil
-}
-
-// decodeImage handles the initial file I/O and decoding.
-func decodeImage(path string) (image.Image, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	img, _, err := image.Decode(file)
-	return img, err
 }
 
 // Convert to grayscale to focus purely on luminance edges,

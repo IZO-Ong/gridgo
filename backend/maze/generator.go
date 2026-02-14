@@ -21,6 +21,7 @@ func (m *Maze) GenerateKruskal() {
 // GenerateImageMaze triggers a guided Kruskal's generation using weights
 // derived from the Canny pipeline.
 func (m *Maze) GenerateImageMaze(weights map[string]int) {
+	m.Weights = weights
 	m.generateWeightedKruskal(weights)
 }
 

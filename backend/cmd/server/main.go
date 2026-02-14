@@ -12,7 +12,7 @@ func main() {
 	// endpoint for maze generation
 	http.HandleFunc("/api/maze/generate", handleGenerateMaze)
 
-	println("GridGo API running on :8080")
+	println("GridGo API running on port 8080")
 	http.ListenAndServe(":8080", nil)
 }
 

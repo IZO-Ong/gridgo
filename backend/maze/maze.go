@@ -10,20 +10,23 @@ import (
 // It serves as the primary state container for both generation
 // and rendering logic.
 type Maze struct {
-	Rows, Cols int
-	Grid       [][]Cell
-	Start      [2]int // [row, col]
-	End        [2]int // [row, col]
+    Rows    int            `json:"rows"`
+    Cols    int            `json:"cols"`
+    Grid    [][]Cell       `json:"grid"`
+    Start   [2]int         `json:"start"`
+    End     [2]int         `json:"end"`
+    Weights map[string]int `json:"weights"` 
 }
 
 // Cell represents a single coordinate in the maze.
 // It tracks its own boundaries and visual metadata for
 // the rendering pipeline.
 type Cell struct {
-	Row, Col    int
-	Visited     bool    // Used by DFS (Recursive Backtracker) algorithm
-	Walls       [4]bool // 0:Top, 1:Right, 2:Bottom, 3:Left
-	WallWeights [4]int  // Maps Canny magnitudes to individual wall intensity
+	Row         int     `json:"row"`
+	Col         int     `json:"col"`
+	Visited     bool    `json:"visited"`
+	Walls       [4]bool `json:"walls"`        // 0:Top, 1:Right, 2:Bottom, 3:Left
+	WallWeights [4]int  `json:"wall_weights"` // Useful if you want to debug edge values later
 }
 
 // SetManualStartEnd allows specific placement of entrance/exit

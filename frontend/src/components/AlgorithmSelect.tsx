@@ -5,17 +5,15 @@ interface AlgorithmOption {
   label: string;
 }
 
-interface AlgorithmSelectProps {
-  value: string;
-  onChange: (id: string) => void;
-  options: AlgorithmOption[];
-}
-
 export default function AlgorithmSelect({
   value,
   onChange,
   options,
-}: AlgorithmSelectProps) {
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  options: AlgorithmOption[];
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,12 +34,26 @@ export default function AlgorithmSelect({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-2 pr-8 text-left flex justify-between items-center focus:bg-zinc-100"
+        className="w-full p-2 pr-10 text-left flex justify-between items-center focus:bg-zinc-50 transition-colors"
       >
-        <span>{options.find((o) => o.id === value)?.label}</span>
-        <span className={`transition-transform ${isOpen ? "rotate-180" : ""}`}>
-          ▼
+        <span className="truncate">
+          {options.find((o) => o.id === value)?.label}
         </span>
+        <div className="absolute right-2 top-0 bottom-0 flex items-center pointer-events-none">
+          <svg
+            className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="3"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
       </button>
 
       {isOpen && (

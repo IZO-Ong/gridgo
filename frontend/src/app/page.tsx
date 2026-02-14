@@ -14,17 +14,32 @@ const ALGORITHMS = [
 export default function Home() {
   const [maze, setMaze] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [genType, setGenType] = useState("image");
-  const { dims, setDims, handleImageChange } = useImageDimensions();
+  const { dims, updateDim, clampDimensions, handleImageChange } =
+    useImageDimensions();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+
     try {
       const formData = new FormData(e.currentTarget);
-      setMaze(await generateMaze(formData));
-    } catch (err) {
-      alert(err);
+
+      // Client-side validation
+      if (genType === "image" && !formData.get("image")) {
+        throw new Error("IMAGE_REQUIRED");
+      }
+
+      const data = await generateMaze(formData);
+      setMaze(data);
+      setError(null);
+    } catch (err: any) {
+      const errorMessage = err.message || "SYSTEM_FAILURE";
+
+      if (errorMessage !== error) {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -46,31 +61,35 @@ export default function Home() {
           <input type="hidden" name="type" value={genType} />
 
           <div className="col-span-3 space-y-2">
-            <label className="block font-bold uppercase">Grid_Dimensions</label>
+            <label className="block font-bold">GRID_DIMENSIONS [2-500]</label>
             <div className="flex border-2 border-black divide-x-2 divide-black">
               <input
                 name="rows"
                 type="number"
+                min="2"
+                max="500"
                 value={dims.rows}
-                onChange={(e) =>
-                  setDims({ ...dims, rows: parseInt(e.target.value) || 0 })
-                }
-                className="w-full p-2 outline-none focus:bg-zinc-100 bg-transparent"
+                onChange={(e) => updateDim("rows", e.target.value)}
+                onBlur={clampDimensions} // Snaps manual input into [2, 500]
+                className="w-full p-2 outline-none focus:bg-zinc-100 bg-transparent transition-colors"
               />
               <input
                 name="cols"
                 type="number"
+                min="2"
+                max="500"
                 value={dims.cols}
-                onChange={(e) =>
-                  setDims({ ...dims, cols: parseInt(e.target.value) || 0 })
-                }
-                className="w-full p-2 outline-none focus:bg-zinc-100 bg-transparent"
+                onChange={(e) => updateDim("cols", e.target.value)}
+                onBlur={clampDimensions}
+                className="w-full p-2 outline-none focus:bg-zinc-100 bg-transparent transition-colors"
               />
             </div>
           </div>
 
           <div className="col-span-4 space-y-2">
-            <label className="block font-bold uppercase">Algorithm</label>
+            <label className="block font-bold uppercase tracking-widest text-[10px]">
+              Algorithm
+            </label>
             <AlgorithmSelect
               value={genType}
               onChange={setGenType}
@@ -79,14 +98,14 @@ export default function Home() {
           </div>
 
           {genType === "image" && (
-            <div className="col-span-5 space-y-2">
-              <label className="block font-bold uppercase">Input_Source</label>
+            <div className="col-span-5 space-y-2 animate-in fade-in slide-in-from-left-2">
+              <label className="block font-bold">SOURCE_IMAGE</label>
               <input
                 name="image"
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="w-full border-2 border-black p-[5px] text-xs file:bg-black file:text-white file:px-3 file:py-1 file:mr-3"
+                className="w-full border-2 border-black p-[5px] text-xs file:bg-black file:text-white file:border-none file:px-3 file:py-1 file:mr-3 file:font-mono cursor-pointer"
               />
             </div>
           )}
@@ -94,17 +113,26 @@ export default function Home() {
           <button
             type="submit"
             disabled={loading}
-            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${loading ? "bg-zinc-200 cursor-wait" : "bg-white hover:bg-black hover:text-white transition-all active:shadow-none active:translate-y-1"}`}
+            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all
+              ${loading ? "bg-zinc-200" : "bg-white hover:bg-black hover:text-white"}`}
           >
-            {loading ? ">>> PROCESSING..." : ">>> EXECUTE_GENERATION"}
+            {loading ? ">>> PROCESSING_BUFFER..." : ">>> EXECUTE_GENERATION"}
           </button>
         </form>
 
-        <section className="border-4 border-black min-h-[500px] flex items-center justify-center p-4 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
+        {error && (
+          <div className="col-span-12 p-3 bg-red-50 border-2 border-red-600 text-red-600 font-bold animate-in fade-in slide-in-from-top-1">
+            {`>> ERROR: ${error}`}
+          </div>
+        )}
+
+        <section className="border-4 border-black min-h-[600px] flex items-center justify-center p-4 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] shadow-inner">
           {maze ? (
             <MazeCanvas maze={maze} />
           ) : (
-            <p className="opacity-30 tracking-widest font-bold">SYSTEM_IDLE</p>
+            <p className="opacity-20 tracking-[0.3em] font-bold uppercase">
+              System_Idle
+            </p>
           )}
         </section>
       </div>

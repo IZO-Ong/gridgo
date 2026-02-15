@@ -29,10 +29,19 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
 
+    clampDimensions();
+
+    setLoading(true);
     try {
       const formData = new FormData(e.currentTarget);
+
+      const rows = parseInt(formData.get("rows") as string);
+      const cols = parseInt(formData.get("cols") as string);
+
+      if (rows < 2 || rows > 200 || cols < 2 || cols > 200) {
+        throw new Error("OUT_OF_BOUNDS: Range is 2-200");
+      }
 
       if (genType === "image" && !formData.get("image")) {
         throw new Error("IMAGE_REQUIRED");
@@ -43,9 +52,7 @@ export default function Home() {
       setError(null);
     } catch (err: any) {
       const errorMessage = err.message || "SYSTEM_FAILURE";
-      if (errorMessage !== error) {
-        setError(errorMessage);
-      }
+      if (errorMessage !== error) setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -65,15 +72,12 @@ export default function Home() {
           className="grid grid-cols-12 gap-6 items-end"
         >
           <input type="hidden" name="type" value={genType} />
-
           <div className="col-span-3 space-y-2">
-            <label className="block font-bold">GRID_DIMENSIONS [2-500]</label>
+            <label className="block font-bold">GRID_DIMENSIONS [2-200]</label>
             <div className="flex border-2 border-black divide-x-2 divide-black">
               <input
                 name="rows"
                 type="number"
-                min="2"
-                max="500"
                 value={dims.rows}
                 onChange={(e) => updateDim("rows", e.target.value)}
                 onBlur={clampDimensions}
@@ -82,8 +86,6 @@ export default function Home() {
               <input
                 name="cols"
                 type="number"
-                min="2"
-                max="500"
                 value={dims.cols}
                 onChange={(e) => updateDim("cols", e.target.value)}
                 onBlur={clampDimensions}
@@ -91,7 +93,6 @@ export default function Home() {
               />
             </div>
           </div>
-
           <div className="col-span-4 space-y-2">
             <label className="block font-bold uppercase tracking-widest text-[10px]">
               Algorithm
@@ -102,52 +103,55 @@ export default function Home() {
               options={ALGORITHMS}
             />
           </div>
-
           {genType === "image" && (
             <div className="col-span-5 space-y-2 animate-in fade-in slide-in-from-left-2">
-              <label className="block font-bold">SOURCE_IMAGE</label>
+              <label className="block font-bold text-[10px] uppercase tracking-widest">
+                Source_Image
+              </label>
               <input
                 name="image"
                 type="file"
                 accept="image/*"
                 onChange={onImageChange}
-                className="w-full border-2 border-black p-[5px] text-xs file:bg-black file:text-white file:border-none file:px-3 file:py-1 file:mr-3 file:font-mono cursor-pointer"
+                className="w-full border-2 border-black p-[5px] text-xs file:bg-black file:text-white file:border-none file:px-3 file:py-1 cursor-pointer"
               />
             </div>
           )}
-
           <button
             type="submit"
             disabled={isSubmitDisabled}
-            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all flex justify-start pl-8
-              ${
-                isSubmitDisabled
-                  ? "bg-zinc-100 text-zinc-400 cursor-not-allowed shadow-none translate-y-1 opacity-50"
-                  : "bg-white hover:bg-black hover:text-white active:shadow-none active:translate-y-1 cursor-pointer"
-              }`}
+            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all flex justify-start pl-8 ${isSubmitDisabled ? "bg-zinc-100 text-zinc-400 opacity-50" : "bg-white hover:bg-black hover:text-white active:shadow-none active:translate-y-1 cursor-pointer"}`}
           >
             {loading ? ">>> PROCESSING_BUFFER..." : ">>> EXECUTE_GENERATION"}
           </button>
         </form>
 
-        {error && (
-          <div className="col-span-12 p-3 bg-red-50 border-2 border-red-600 text-red-600 font-bold animate-in fade-in slide-in-from-top-1">
-            {`>> ERROR: ${error}`}
+        <section className="relative border-4 border-black h-[750px] bg-zinc-50 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
+          <div className="h-7 border-b-2 border-black bg-white flex items-center px-3 justify-between z-30 shrink-0">
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] font-bold tracking-widest uppercase tabular-nums">
+                MAZE_OUTPUT
+              </span>
+              <span className="text-[10px] opacity-30 font-bold uppercase">
+                DIM: {dims.rows}x{dims.cols}
+              </span>
+            </div>
           </div>
-        )}
 
-        <section className="border-4 border-black h-[700px] overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] flex flex-col items-center p-8 shadow-inner relative">
-          {maze ? (
-            <div className="flex-1 w-full flex justify-center items-center overflow-hidden">
+          <div className="relative flex-1 bg-white overflow-hidden group">
+            {/* Background pattern remains for depth */}
+            <div className="absolute inset-0 bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.05] pointer-events-none" />
+
+            {maze ? (
               <MazeCanvas maze={maze} />
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="opacity-20 tracking-[0.3em] font-bold uppercase select-none">
-                System_Idle
-              </p>
-            </div>
-          )}
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center space-y-2">
+                <p className="opacity-20 tracking-[0.5em] font-bold uppercase text-2xl select-none">
+                  System_Idle
+                </p>
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </main>

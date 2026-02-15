@@ -22,14 +22,19 @@ export default function Home() {
   const { dims, updateDim, clampDimensions, handleImageChange } =
     useImageDimensions();
 
-  // 2. Updated handler to accept both Input Events and raw Files (for drag-and-drop)
   const onImageChange = (e: React.ChangeEvent<HTMLInputElement> | File) => {
     let file: File | undefined;
 
     if (e instanceof File) {
       file = e;
-      // Manually trigger dimension hook if it expects an event,
-      // or update your hook to handle raw files.
+
+      const fakeEvent = {
+        target: {
+          files: [file],
+        },
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+
+      handleImageChange(fakeEvent);
     } else {
       file = e.target.files?.[0];
       handleImageChange(e);

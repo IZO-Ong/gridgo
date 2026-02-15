@@ -51,7 +51,6 @@ export default function MazeControls({
     <form onSubmit={onSubmit} className="grid grid-cols-12 gap-6 items-end">
       <input type="hidden" name="type" value={genType} />
 
-      {/* Grid Dimensions - Matches h-[38px] inside its subcomponent */}
       <div className="col-span-3 space-y-2">
         <label className="block font-bold uppercase tracking-widest text-[10px]">
           Grid_Dimensions [2-300]
@@ -63,7 +62,6 @@ export default function MazeControls({
         />
       </div>
 
-      {/* Algorithm Select - Has h-[38px] internally */}
       <div className="col-span-4 space-y-2">
         <label className="block font-bold uppercase tracking-widest text-[10px]">
           Algorithm
@@ -75,7 +73,6 @@ export default function MazeControls({
         />
       </div>
 
-      {/* Source Image - Height forced to 38px to match others */}
       <div
         className={`col-span-5 space-y-2 transition-all ${
           genType === "image"
@@ -109,7 +106,6 @@ export default function MazeControls({
               {selectedFile ? selectedFile.name : "Select or drop image"}
             </span>
           </div>
-          {/* Browse button also matches height */}
           <div className="border-l-2 border-black bg-black text-white px-3 flex items-center text-[10px] font-black uppercase tracking-tighter">
             Browse
           </div>

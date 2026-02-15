@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { MazeData } from "@/hooks/useMazeGeneration";
 import { renderMazeImage } from "@/lib/api";
 
+const PADDING = 800; // Physical pixel buffer around the viewfinder
+
 export default function MazeCanvas({ maze }: { maze: MazeData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -10,39 +12,59 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
   const [transform, setTransform] = useState({ s: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const [cssOffset, setCssOffset] = useState({ x: 0, y: 0 });
+
+  // RE-CENTER LOGIC:
+  const centerMaze = useCallback(
+    (cellSize: number) => {
+      const container = containerRef.current;
+      if (!container || !maze || cellSize === 0) return;
+      const viewW = container.clientWidth;
+      const viewH = container.clientHeight;
+      const mazeW = maze.cols * cellSize;
+      const mazeH = maze.rows * cellSize;
+
+      setTransform({
+        s: 1,
+        x: (viewW - mazeW) / 2,
+        y: (viewH - mazeH) / 2,
+      });
+      setCssOffset({ x: 0, y: 0 });
+    },
+    [maze]
+  );
 
   useEffect(() => {
-    setTransform({ s: 1, x: 0, y: 0 });
-  }, [maze]);
+    if (dynamicCellSize > 0) centerMaze(dynamicCellSize);
+  }, [maze, dynamicCellSize, centerMaze]);
+
+  const commitDrag = useCallback((offset: { x: number; y: number }) => {
+    setTransform((p) => ({ ...p, x: p.x + offset.x, y: p.y + offset.y }));
+    setCssOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, []);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const handleNativeWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      handleZoom(e.deltaY, e.clientX - rect.left, e.clientY - rect.top);
+    if (!isDragging) return;
+    const handleGlobalMove = (e: MouseEvent) => {
+      setCssOffset({
+        x: e.clientX - dragStart.current.x,
+        y: e.clientY - dragStart.current.y,
+      });
     };
-    container.addEventListener("wheel", handleNativeWheel, { passive: false });
-    return () => container.removeEventListener("wheel", handleNativeWheel);
-  }, [maze, transform]);
-
-  useEffect(() => {
-    if (!containerRef.current || !maze) return;
-    const updateSize = () => {
-      const parent = containerRef.current?.closest("section");
-      if (!parent) return;
-      const availableWidth = parent.clientWidth - 128;
-      const availableHeight = parent.clientHeight - 128;
-      setDynamicCellSize(
-        Math.min(availableWidth / maze.cols, availableHeight / maze.rows)
-      );
+    const handleGlobalUp = (e: MouseEvent) => {
+      commitDrag({
+        x: e.clientX - dragStart.current.x,
+        y: e.clientY - dragStart.current.y,
+      });
     };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, [maze]);
+    window.addEventListener("mousemove", handleGlobalMove);
+    window.addEventListener("mouseup", handleGlobalUp);
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMove);
+      window.removeEventListener("mouseup", handleGlobalUp);
+    };
+  }, [isDragging, commitDrag]);
 
   const handleZoom = useCallback(
     (delta: number, mouseX?: number, mouseY?: number) => {
@@ -58,137 +80,181 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
             }
           : { ...prev, s: newScale };
       });
+      setCssOffset({ x: 0, y: 0 });
     },
     []
   );
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const handleNativeWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = container.getBoundingClientRect();
+      handleZoom(e.deltaY, e.clientX - rect.left, e.clientY - rect.top);
+    };
+    container.addEventListener("wheel", handleNativeWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleNativeWheel);
+  }, [handleZoom]);
+
+  useEffect(() => {
+    if (!containerRef.current || !maze) return;
+    const updateSize = () => {
+      const parent = containerRef.current?.closest("section");
+      if (!parent) return;
+      setDynamicCellSize(
+        Math.min(
+          (parent.clientWidth - 128) / maze.cols,
+          (parent.clientHeight - 128) / maze.rows
+        )
+      );
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, [maze]);
+
+  // RESTORED SAVE LOGIC
   const handleSave = async () => {
-    console.log("INITIALIZING_RENDER_DOWNLOAD...");
     try {
       const blob = await renderMazeImage(maze);
-
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `maze_${maze.rows}x${maze.cols}_${Date.now()}.png`;
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (e: any) {
-      console.error("RENDER_FAILURE", e.message);
       alert(`FAILED TO SAVE: ${e.message}`);
     }
   };
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !maze || dynamicCellSize === 0) return;
+    const container = containerRef.current;
+    if (!canvas || !container || !maze || dynamicCellSize === 0) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    canvas.width = maze.cols * dynamicCellSize + 1;
-    canvas.height = maze.rows * dynamicCellSize + 1;
+    canvas.width = container.clientWidth + PADDING * 2;
+    canvas.height = container.clientHeight + PADDING * 2;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.save();
-    ctx.translate(transform.x, transform.y);
+    ctx.translate(transform.x + PADDING, transform.y + PADDING);
     ctx.scale(transform.s, transform.s);
+
+    const cellSize = dynamicCellSize;
+    const scaledCell = cellSize * transform.s;
+    const OVERSCAN = 50; // Increased logical buffer
+
+    const startCol = Math.max(
+      0,
+      Math.floor(-(transform.x + PADDING) / scaledCell) - OVERSCAN
+    );
+    const endCol = Math.min(
+      maze.cols,
+      Math.ceil((canvas.width - (transform.x + PADDING)) / scaledCell) +
+        OVERSCAN
+    );
+    const startRow = Math.max(
+      0,
+      Math.floor(-(transform.y + PADDING) / scaledCell) - OVERSCAN
+    );
+    const endRow = Math.min(
+      maze.rows,
+      Math.ceil((canvas.height - (transform.y + PADDING)) / scaledCell) +
+        OVERSCAN
+    );
 
     const getWallColor = (w: number) =>
       w >= 1000
         ? "black"
         : `rgb(${220 - (w % 30)},${220 - (w % 30)},${220 - (w % 30)})`;
-    ctx.fillStyle = "#90ee90";
-    ctx.fillRect(
-      maze.start[1] * dynamicCellSize,
-      maze.start[0] * dynamicCellSize,
-      dynamicCellSize,
-      dynamicCellSize
-    );
-    ctx.fillStyle = "#ff6347";
-    ctx.fillRect(
-      maze.end[1] * dynamicCellSize,
-      maze.end[0] * dynamicCellSize,
-      dynamicCellSize,
-      dynamicCellSize
-    );
+    ctx.lineWidth = cellSize > 5 ? 1 : 0.5;
 
-    ctx.lineWidth = dynamicCellSize > 5 ? 1 : 0.5;
-    maze.grid.forEach((row, r) => {
-      row.forEach((cell, c) => {
-        const x = c * dynamicCellSize;
-        const y = r * dynamicCellSize;
+    const wallBatches: Record<string, Path2D> = {};
+
+    for (let r = startRow; r < endRow; r++) {
+      for (let c = startCol; c < endCol; c++) {
+        const x = c * cellSize;
+        const y = r * cellSize;
+        const cell = maze.grid[r][c];
+        if (r === maze.start[0] && c === maze.start[1]) {
+          ctx.fillStyle = "#90ee90";
+          ctx.fillRect(x, y, cellSize, cellSize);
+        } else if (r === maze.end[0] && c === maze.end[1]) {
+          ctx.fillStyle = "#ff6347";
+          ctx.fillRect(x, y, cellSize, cellSize);
+        }
+
         cell.walls.forEach((w, i) => {
           if (w) {
-            ctx.beginPath();
-            ctx.strokeStyle = getWallColor(cell.wall_weights[i]);
+            const color = getWallColor(cell.wall_weights[i]);
+            if (!wallBatches[color]) wallBatches[color] = new Path2D();
+            const path = wallBatches[color];
             if (i === 0) {
-              ctx.moveTo(x, y);
-              ctx.lineTo(x + dynamicCellSize, y);
+              path.moveTo(x, y);
+              path.lineTo(x + cellSize, y);
             }
             if (i === 1) {
-              ctx.moveTo(x + dynamicCellSize, y);
-              ctx.lineTo(x + dynamicCellSize, y + dynamicCellSize);
+              path.moveTo(x + cellSize, y);
+              path.lineTo(x + cellSize, y + cellSize);
             }
             if (i === 2) {
-              ctx.moveTo(x, y + dynamicCellSize);
-              ctx.lineTo(x + dynamicCellSize, y + dynamicCellSize);
+              path.moveTo(x, y + cellSize);
+              path.lineTo(x + cellSize, y + cellSize);
             }
             if (i === 3) {
-              ctx.moveTo(x, y);
-              ctx.lineTo(x, y + dynamicCellSize);
+              path.moveTo(x, y);
+              path.lineTo(x, y + cellSize);
             }
-            ctx.stroke();
           }
         });
-      });
+      }
+    }
+
+    Object.entries(wallBatches).forEach(([color, path]) => {
+      ctx.strokeStyle = color;
+      ctx.stroke(path);
     });
     ctx.restore();
   }, [maze, dynamicCellSize, transform]);
 
-  const baseMazeW = maze.cols * dynamicCellSize;
-  const baseMazeH = maze.rows * dynamicCellSize;
-
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
+    <div className="relative w-full h-full flex items-center justify-center p-8">
       <div
         ref={containerRef}
-        style={{ width: baseMazeW, height: baseMazeH }}
-        className="relative overflow-hidden cursor-grab active:cursor-grabbing border border-zinc-200/50"
+        className="w-full h-full relative overflow-hidden cursor-grab active:cursor-grabbing border-2 border-black bg-white"
         onMouseDown={(e) => {
           setIsDragging(true);
-          dragStart.current = {
-            x: e.clientX - transform.x,
-            y: e.clientY - transform.y,
-          };
+          dragStart.current = { x: e.clientX, y: e.clientY };
         }}
-        onMouseMove={(e) => {
-          if (isDragging)
-            setTransform((p) => ({
-              ...p,
-              x: e.clientX - dragStart.current.x,
-              y: e.clientY - dragStart.current.y,
-            }));
-        }}
-        onMouseUp={() => setIsDragging(false)}
-        onMouseLeave={() => setIsDragging(false)}
       >
-        <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-black z-20 pointer-events-none" />
-        <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-black z-20 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-black z-20 pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-black z-20 pointer-events-none" />
-        <canvas ref={canvasRef} className="drop-shadow-sm select-none" />
+        <div
+          style={{
+            transform: `translate3d(${cssOffset.x - PADDING}px, ${cssOffset.y - PADDING}px, 0)`,
+            willChange: "transform",
+          }}
+          className="w-fit h-fit"
+        >
+          <canvas ref={canvasRef} className="block select-none" />
+        </div>
+
+        {/* Viewport Brackets */}
+        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-black z-20 pointer-events-none" />
+        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-black z-20 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-black z-20 pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-black z-20 pointer-events-none" />
       </div>
 
-      <div className="absolute bottom-6 left-6 flex flex-col border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      {/* RESTORED SAVE BUTTON (Bottom-Left) */}
+      <div className="absolute bottom-6 left-6 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-30">
         <button
           onClick={handleSave}
           title="SAVE_SYSTEM_IMAGE"
           className="p-3 hover:bg-black hover:text-white transition-colors cursor-pointer group"
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
             width="20"
             height="20"
             viewBox="0 0 24 24"
@@ -205,22 +271,28 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
         </button>
       </div>
 
-      {/* Persistence Controls (Bottom-Right) */}
+      {/* Controls (Bottom-Right) */}
       <div className="absolute bottom-6 right-6 flex flex-col border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] divide-y-2 divide-black z-30">
         <button
-          onClick={() => handleZoom(-1)}
+          onClick={() => {
+            const r = containerRef.current?.getBoundingClientRect();
+            if (r) handleZoom(-1, r.width / 2, r.height / 2);
+          }}
           className="p-3 hover:bg-black hover:text-white font-bold text-lg cursor-pointer"
         >
           +
         </button>
         <button
-          onClick={() => handleZoom(1)}
+          onClick={() => {
+            const r = containerRef.current?.getBoundingClientRect();
+            if (r) handleZoom(1, r.width / 2, r.height / 2);
+          }}
           className="p-3 hover:bg-black hover:text-white font-bold text-lg cursor-pointer"
         >
           -
         </button>
         <button
-          onClick={() => setTransform({ s: 1, x: 0, y: 0 })}
+          onClick={() => centerMaze(dynamicCellSize)}
           className="p-2 text-[9px] hover:bg-black hover:text-white font-bold uppercase cursor-pointer"
         >
           Reset

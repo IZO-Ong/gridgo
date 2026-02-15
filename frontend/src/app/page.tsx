@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
-import { generateMaze } from "@/lib/api";
 import MazeCanvas from "@/components/MazeCanvas";
 import AlgorithmSelect from "@/components/AlgorithmSelect";
+import GridDimensionsInput from "@/components/GridDimensionsInput"; // New Import
 import { useImageDimensions } from "@/hooks/useImageDimensions";
+import { useMazeGeneration } from "@/hooks/useMazeGeneration";
 
 const ALGORITHMS = [
   { id: "image", label: "IMAGE_KRUSKAL" },
@@ -12,9 +13,8 @@ const ALGORITHMS = [
 ];
 
 export default function Home() {
-  const [maze, setMaze] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { maze, loading, error, executeGeneration, setError } =
+    useMazeGeneration();
   const [genType, setGenType] = useState("image");
   const [hasImage, setHasImage] = useState(false);
   const { dims, updateDim, clampDimensions, handleImageChange } =
@@ -29,33 +29,23 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     clampDimensions();
 
-    setLoading(true);
-    try {
-      const formData = new FormData(e.currentTarget);
+    const formData = new FormData(e.currentTarget);
+    const rows = parseInt(formData.get("rows") as string);
+    const cols = parseInt(formData.get("cols") as string);
 
-      const rows = parseInt(formData.get("rows") as string);
-      const cols = parseInt(formData.get("cols") as string);
-
-      if (rows < 2 || rows > 200 || cols < 2 || cols > 200) {
-        throw new Error("OUT_OF_BOUNDS: Range is 2-200");
-      }
-
-      if (genType === "image" && !formData.get("image")) {
-        throw new Error("IMAGE_REQUIRED");
-      }
-
-      const data = await generateMaze(formData);
-      setMaze(data);
-      setError(null);
-    } catch (err: any) {
-      const errorMessage = err.message || "SYSTEM_FAILURE";
-      if (errorMessage !== error) setError(errorMessage);
-    } finally {
-      setLoading(false);
+    if (rows < 2 || rows > 300 || cols < 2 || cols > 300) {
+      setError("OUT_OF_BOUNDS: Range is 2-300");
+      return;
     }
+
+    if (genType === "image" && !formData.get("image")) {
+      setError("IMAGE_REQUIRED");
+      return;
+    }
+
+    await executeGeneration(formData);
   };
 
   return (
@@ -72,27 +62,17 @@ export default function Home() {
           className="grid grid-cols-12 gap-6 items-end"
         >
           <input type="hidden" name="type" value={genType} />
+
           <div className="col-span-3 space-y-2">
-            <label className="block font-bold">GRID_DIMENSIONS [2-200]</label>
-            <div className="flex border-2 border-black divide-x-2 divide-black">
-              <input
-                name="rows"
-                type="number"
-                value={dims.rows}
-                onChange={(e) => updateDim("rows", e.target.value)}
-                onBlur={clampDimensions}
-                className="w-full p-2 outline-none focus:bg-zinc-100 bg-transparent transition-colors"
-              />
-              <input
-                name="cols"
-                type="number"
-                value={dims.cols}
-                onChange={(e) => updateDim("cols", e.target.value)}
-                onBlur={clampDimensions}
-                className="w-full p-2 outline-none focus:bg-zinc-100 bg-transparent transition-colors"
-              />
-            </div>
+            <label className="block font-bold">GRID_DIMENSIONS [2-300]</label>
+            <GridDimensionsInput
+              rows={dims.rows}
+              cols={dims.cols}
+              onUpdate={updateDim}
+              onBlur={clampDimensions}
+            />
           </div>
+
           <div className="col-span-4 space-y-2">
             <label className="block font-bold uppercase tracking-widest text-[10px]">
               Algorithm
@@ -103,6 +83,7 @@ export default function Home() {
               options={ALGORITHMS}
             />
           </div>
+
           {genType === "image" && (
             <div className="col-span-5 space-y-2 animate-in fade-in slide-in-from-left-2">
               <label className="block font-bold text-[10px] uppercase tracking-widest">
@@ -117,14 +98,21 @@ export default function Home() {
               />
             </div>
           )}
+
           <button
             type="submit"
             disabled={isSubmitDisabled}
             className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all flex justify-start pl-8 ${isSubmitDisabled ? "bg-zinc-100 text-zinc-400 opacity-50" : "bg-white hover:bg-black hover:text-white active:shadow-none active:translate-y-1 cursor-pointer"}`}
           >
-            {loading ? ">>> PROCESSING_BUFFER..." : ">>> EXECUTE_GENERATION"}
+            {loading ? ">>> PROCESSING..." : ">>> GENERATE"}
           </button>
         </form>
+
+        {error && (
+          <div className="col-span-12 p-3 bg-red-50 border-2 border-red-600 text-red-600 font-bold animate-in fade-in slide-in-from-top-1 uppercase">
+            {`>> ERROR: ${error}`}
+          </div>
+        )}
 
         <section className="relative border-4 border-black h-[750px] bg-zinc-50 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
           <div className="h-7 border-b-2 border-black bg-white flex items-center px-3 justify-between z-30 shrink-0">
@@ -133,13 +121,15 @@ export default function Home() {
                 MAZE_OUTPUT
               </span>
               <span className="text-[10px] opacity-30 font-bold uppercase">
-                DIM: {dims.rows}x{dims.cols}
+                DIM:{" "}
+                {maze
+                  ? `${maze.rows}x${maze.cols}`
+                  : `${dims.rows}x${dims.cols}`}
               </span>
             </div>
           </div>
 
           <div className="relative flex-1 bg-white overflow-hidden group">
-            {/* Background pattern remains for depth */}
             <div className="absolute inset-0 bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.05] pointer-events-none" />
 
             {maze ? (

@@ -10,7 +10,7 @@ export function useImageDimensions(initialRows = 30, initialCols = 30) {
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = () => {
-      const scaleFactor = Math.min(200 / img.width, 200 / img.height, 1);
+      const scaleFactor = Math.min(300 / img.width, 300 / img.height, 1);
 
       setDims({
         rows: Math.max(2, Math.floor(img.height * scaleFactor)),
@@ -25,11 +25,11 @@ export function useImageDimensions(initialRows = 30, initialCols = 30) {
     setDims((prev) => ({ ...prev, [key]: parsed }));
   };
 
-  // values are between 2 and 200
+  // values are between 2 and 300
   const clampDimensions = () => {
     setDims((prev) => ({
-      rows: Math.min(200, Math.max(2, prev.rows)),
-      cols: Math.min(200, Math.max(2, prev.cols)),
+      rows: Math.min(300, Math.max(2, prev.rows)),
+      cols: Math.min(300, Math.max(2, prev.cols)),
     }));
   };
 

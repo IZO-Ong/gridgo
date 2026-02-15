@@ -1,0 +1,38 @@
+"use client";
+import { useState } from "react";
+import { generateMaze } from "@/lib/api";
+
+export interface MazeData {
+  rows: number;
+  cols: number;
+  start: [number, number];
+  end: [number, number];
+  grid: Array<
+    Array<{
+      walls: [boolean, boolean, boolean, boolean];
+      wall_weights: [number, number, number, number];
+    }>
+  >;
+}
+
+export function useMazeGeneration() {
+  const [maze, setMaze] = useState<MazeData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const executeGeneration = async (formData: FormData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await generateMaze(formData);
+      setMaze(data);
+    } catch (err: any) {
+      const errorMessage = err.message || "SYSTEM_FAILURE";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { maze, loading, error, executeGeneration, setError };
+}

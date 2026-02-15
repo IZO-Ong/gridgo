@@ -1,7 +1,9 @@
+// src/components/MazeCanvas.tsx
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { MazeData } from "@/hooks/useMazeGeneration";
 
-export default function MazeCanvas({ maze }: { maze: any }) {
+export default function MazeCanvas({ maze }: { maze: MazeData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dynamicCellSize, setDynamicCellSize] = useState(0);
@@ -9,12 +11,10 @@ export default function MazeCanvas({ maze }: { maze: any }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
-  // Reset viewport for every new generation
   useEffect(() => {
     setTransform({ s: 1, x: 0, y: 0 });
   }, [maze]);
 
-  // Capture wheel events to prevent page scrolling
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -33,7 +33,6 @@ export default function MazeCanvas({ maze }: { maze: any }) {
     const updateSize = () => {
       const parent = containerRef.current?.closest("section");
       if (!parent) return;
-      // The -128px defines the "Safe Zone"
       const availableWidth = parent.clientWidth - 128;
       const availableHeight = parent.clientHeight - 128;
       setDynamicCellSize(
@@ -69,12 +68,9 @@ export default function MazeCanvas({ maze }: { maze: any }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const mazeW = maze.cols * dynamicCellSize;
-    const mazeH = maze.rows * dynamicCellSize;
-    canvas.width = mazeW + 1;
-    canvas.height = mazeH + 1;
-    // Clear to transparency so zinc-50 background shows through
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = maze.cols * dynamicCellSize + 1;
+    canvas.height = maze.rows * dynamicCellSize + 1;
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Blending start
 
     ctx.save();
     ctx.translate(transform.x, transform.y);
@@ -100,11 +96,11 @@ export default function MazeCanvas({ maze }: { maze: any }) {
     );
 
     ctx.lineWidth = dynamicCellSize > 5 ? 1 : 0.5;
-    maze.grid.forEach((row: any[], r: number) => {
-      row.forEach((cell: any, c: number) => {
+    maze.grid.forEach((row, r) => {
+      row.forEach((cell, c) => {
         const x = c * dynamicCellSize;
         const y = r * dynamicCellSize;
-        cell.walls.forEach((w: boolean, i: number) => {
+        cell.walls.forEach((w, i) => {
           if (w) {
             ctx.beginPath();
             ctx.strokeStyle = getWallColor(cell.wall_weights[i]);
@@ -132,17 +128,15 @@ export default function MazeCanvas({ maze }: { maze: any }) {
     ctx.restore();
   }, [maze, dynamicCellSize, transform]);
 
-  // Calculate the fixed box size for brackets
   const baseMazeW = maze.cols * dynamicCellSize;
   const baseMazeH = maze.rows * dynamicCellSize;
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center p-8">
-      {/* INNER VIEWPORT BOX: Matches maze base size exactly */}
+    <div className="relative w-full h-full flex items-center justify-center">
       <div
         ref={containerRef}
         style={{ width: baseMazeW, height: baseMazeH }}
-        className="relative overflow-hidden cursor-grab active:cursor-grabbing border border-zinc-200/50 shadow-inner"
+        className="relative overflow-hidden cursor-grab active:cursor-grabbing border border-zinc-200/50"
         onMouseDown={(e) => {
           setIsDragging(true);
           dragStart.current = {
@@ -161,7 +155,7 @@ export default function MazeCanvas({ maze }: { maze: any }) {
         onMouseUp={() => setIsDragging(false)}
         onMouseLeave={() => setIsDragging(false)}
       >
-        {/* VIEWPORT BRACKETS: Hug the clipping edges */}
+        {/* VIEWPORT BRACKETS: Fixed to the clipping boundaries */}
         <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-black z-20 pointer-events-none" />
         <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-black z-20 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-black z-20 pointer-events-none" />
@@ -170,7 +164,6 @@ export default function MazeCanvas({ maze }: { maze: any }) {
         <canvas ref={canvasRef} className="drop-shadow-sm select-none" />
       </div>
 
-      {/* Persistent Controls Outside Clipping Box */}
       <div className="absolute bottom-6 right-6 flex flex-col border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] divide-y-2 divide-black z-30">
         <button
           onClick={() => handleZoom(-1)}

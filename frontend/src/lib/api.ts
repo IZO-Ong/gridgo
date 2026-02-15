@@ -1,13 +1,35 @@
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export async function generateMaze(formData: FormData) {
-    const response = await fetch("http://localhost:8080/api/maze/generate", {
+  const response = await fetch(`${BASE_URL}/generate`, {
     method: "POST",
     body: formData,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Failed to generate maze");
+    throw new Error(errorText || "SYSTEM_GENERATION_FAILURE");
   }
-  
+
   return response.json();
+}
+
+export async function renderMazeImage(mazeData: any) {
+  const response = await fetch(`${BASE_URL}/render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(mazeData),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "SYSTEM_RENDER_FAILURE");
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("image/png")) {
+    throw new Error("INVALID_PAYLOAD_FORMAT");
+  }
+
+  return response.blob();
 }

@@ -5,18 +5,10 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
-	"os"
+	"io"
 	"runtime"
 	"sync"
 )
-
-// SaveAsImage renders the maze's structure into a PNG file
-// orchestrates the setup, drawing and file persistence stages
-func (m *Maze) SaveAsImage(filename string, cellSize int) error {
-	img := m.prepareCanvas(cellSize)
-	m.drawMaze(img, cellSize)
-	return m.exportToPNG(img, filename)
-}
 
 // prepareCanvas initializes the image buffer and background.
 func (m *Maze) prepareCanvas(cellSize int) *image.RGBA {
@@ -29,6 +21,14 @@ func (m *Maze) prepareCanvas(cellSize int) *image.RGBA {
 	// initialise white background
 	draw.Draw(img, img.Bounds(), &image.Uniform{color.White}, image.Point{}, draw.Src)
 	return img
+}
+
+func (m *Maze) RenderToWriter(w io.Writer, cellSize int) error {
+    img := m.prepareCanvas(cellSize)
+    m.drawMaze(img, cellSize)
+    
+    // Uses your existing logic but encodes to the HTTP stream
+    return png.Encode(w, img)
 }
 
 // drawMaze iterates through the grid and paints each active wall.
@@ -135,15 +135,4 @@ func (m *Maze) getWallColor(weight int) color.RGBA {
 	// modulo variance provides a slight texture to empty spaces
 	intensity := uint8(230 - (weight % 30))
 	return color.RGBA{intensity, intensity, intensity, 255}
-}
-
-// exportToPNG handles file I/O and PNG encoding.
-func (m *Maze) exportToPNG(img *image.RGBA, filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return png.Encode(f, img)
 }

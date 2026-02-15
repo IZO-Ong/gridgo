@@ -27,8 +27,7 @@ export function useMazeGeneration() {
       const data = await generateMaze(formData);
       setMaze(data);
     } catch (err: any) {
-      const errorMessage = err.message || "SYSTEM_FAILURE";
-      setError(errorMessage);
+      setError(err.message || "SYSTEM_FAILURE");
     } finally {
       setLoading(false);
     }

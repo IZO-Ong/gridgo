@@ -9,25 +9,22 @@ export default function MazeCanvas({ maze }: { maze: any }) {
   useEffect(() => {
     if (!containerRef.current || !maze) return;
 
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) return;
+    const updateSize = () => {
+      const parent = containerRef.current?.closest("section");
+      if (!parent) return;
 
-      const { width, height } = entry.contentRect;
+      const availableWidth = parent.clientWidth - 64;
+      const availableHeight = parent.clientHeight - 64;
 
-      const innerWidth = width - 64;
-      const innerHeight = height - 64;
+      const cellW = availableWidth / maze.cols;
+      const cellH = availableHeight / maze.rows;
+      const stableSize = Math.floor(Math.min(cellW, cellH) * 100) / 100;
+      setDynamicCellSize(stableSize);
+    };
 
-      const cellW = innerWidth / maze.cols;
-      const cellH = innerHeight / maze.rows;
-
-      setDynamicCellSize(Math.min(cellW, cellH));
-    });
-
-    const parent = containerRef.current.closest("section");
-    if (parent) observer.observe(parent);
-
-    return () => observer.disconnect();
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
   }, [maze]);
 
   useEffect(() => {
@@ -112,12 +109,9 @@ export default function MazeCanvas({ maze }: { maze: any }) {
   return (
     <div
       ref={containerRef}
-      className="w-full flex justify-center p-4 bg-white rounded-xl shadow-inner"
+      className="w-full flex justify-center items-center p-4 bg-transparent"
     >
-      <canvas
-        ref={canvasRef}
-        className="border border-gray-300 max-w-full h-auto"
-      />
+      <canvas ref={canvasRef} className="max-w-full h-auto drop-shadow-sm" />
     </div>
   );
 }

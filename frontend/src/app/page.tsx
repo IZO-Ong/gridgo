@@ -16,8 +16,16 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [genType, setGenType] = useState("image");
+  const [hasImage, setHasImage] = useState(false);
   const { dims, updateDim, clampDimensions, handleImageChange } =
     useImageDimensions();
+
+  const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleImageChange(e);
+    setHasImage(!!e.target.files?.[0]);
+  };
+
+  const isSubmitDisabled = loading || (genType === "image" && !hasImage);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -102,7 +110,7 @@ export default function Home() {
                 name="image"
                 type="file"
                 accept="image/*"
-                onChange={handleImageChange}
+                onChange={onImageChange}
                 className="w-full border-2 border-black p-[5px] text-xs file:bg-black file:text-white file:border-none file:px-3 file:py-1 file:mr-3 file:font-mono cursor-pointer"
               />
             </div>
@@ -110,9 +118,13 @@ export default function Home() {
 
           <button
             type="submit"
-            disabled={loading}
-            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 transition-all flex justify-start pl-8 cursor-pointer
-              ${loading ? "bg-zinc-200 cursor-wait text-zinc-500" : "bg-white hover:bg-black hover:text-white"}`}
+            disabled={isSubmitDisabled}
+            className={`col-span-12 border-2 border-black p-4 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all flex justify-start pl-8
+              ${
+                isSubmitDisabled
+                  ? "bg-zinc-100 text-zinc-400 cursor-not-allowed shadow-none translate-y-1 opacity-50"
+                  : "bg-white hover:bg-black hover:text-white active:shadow-none active:translate-y-1 cursor-pointer"
+              }`}
           >
             {loading ? ">>> PROCESSING_BUFFER..." : ">>> EXECUTE_GENERATION"}
           </button>
@@ -124,15 +136,17 @@ export default function Home() {
           </div>
         )}
 
-        <section className="border-4 border-black h-[80vh] min-h-[500px] overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] flex items-center justify-center p-8 shadow-inner relative">
+        <section className="border-4 border-black h-[700px] overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] flex flex-col items-center p-8 shadow-inner relative">
           {maze ? (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="flex-1 w-full flex justify-center items-center overflow-hidden">
               <MazeCanvas maze={maze} />
             </div>
           ) : (
-            <p className="opacity-20 tracking-[0.3em] font-bold uppercase select-none">
-              System_Idle
-            </p>
+            <div className="flex-1 flex items-center justify-center">
+              <p className="opacity-20 tracking-[0.3em] font-bold uppercase select-none">
+                System_Idle
+              </p>
+            </div>
           )}
         </section>
       </div>

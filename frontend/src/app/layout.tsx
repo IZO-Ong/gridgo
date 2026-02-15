@@ -1,31 +1,30 @@
-import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
+import NavBar from "@/components/layout/NavBar";
+import MazeMargin from "@/components/layout/MazeMargin";
 import "./globals.css";
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "GRIDGO",
-  description: "GO_MAZE_GENERATOR",
-};
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className="selection:bg-yellow-200">
-      <body
-        className={`${geistMono.variable} font-mono antialiased bg-white text-black`}
-      >
-        <div className="fixed inset-0 z-[-1] opacity-[0.03] pointer-events-none bg-[inline-url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9ImJsYWNrIi8+PC9zdmc+')] shadow-inner" />
+    <html lang="en">
+      <body className="bg-white text-black min-h-screen relative font-mono overflow-x-hidden">
+        {/* Maze Side Margins */}
+        <MazeMargin side="left" />
+        <MazeMargin side="right" />
 
-        <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-7xl mx-auto">
-          {children}
+        <div className="relative z-10 max-w-5xl mx-auto flex flex-col min-h-screen">
+          <header className="pt-12 pb-2 flex justify-between items-end border-b-4 border-black bg-white">
+            <h1 className="text-4xl font-black uppercase tracking-tighter px-8">
+              GRIDGO
+            </h1>
+            <div className="px-8">
+              <NavBar />
+            </div>
+          </header>
+
+          <main className="flex-1 p-8">{children}</main>
         </div>
       </body>
     </html>

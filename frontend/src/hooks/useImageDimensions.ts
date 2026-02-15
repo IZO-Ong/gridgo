@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 
 export function useImageDimensions(initialRows = 30, initialCols = 30) {
@@ -20,9 +21,8 @@ export function useImageDimensions(initialRows = 30, initialCols = 30) {
     };
   };
 
-  const updateDim = (key: "rows" | "cols", val: string) => {
-    const parsed = parseInt(val) || 0;
-    setDims((prev) => ({ ...prev, [key]: parsed }));
+  const updateDim = (key: "rows" | "cols", val: number) => {
+    setDims((prev) => ({ ...prev, [key]: val }));
   };
 
   // values are between 2 and 300

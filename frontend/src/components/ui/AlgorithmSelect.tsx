@@ -12,10 +12,6 @@ interface AlgorithmSelectProps {
   options: AlgorithmOption[];
 }
 
-/**
- * A custom brutalist dropdown to bypass OS-native styling.
- * Ensures font-mono and custom cursor consistency.
- */
 export default function AlgorithmSelect({
   value,
   onChange,
@@ -24,7 +20,6 @@ export default function AlgorithmSelect({
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when user clicks outside the component
   useEffect(() => {
     const clickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -37,33 +32,29 @@ export default function AlgorithmSelect({
 
   return (
     <div
-      className="relative border-2 border-black bg-white font-mono"
+      className="relative border-2 border-black bg-white font-mono h-[38px] flex items-center"
       ref={ref}
     >
-      {/* Main Toggle Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-2 pr-10 text-left flex justify-between items-center focus:bg-zinc-50 transition-colors cursor-pointer"
+        className="w-full h-full px-3 text-left flex justify-between items-center focus:bg-zinc-50 transition-colors cursor-pointer group"
       >
-        <span className="truncate">
+        <span className="truncate text-xs font-bold uppercase tracking-tight">
           {options.find((o) => o.id === value)?.label}
         </span>
 
-        {/* Fixed SVG Arrow centered vertically */}
-        <div className="absolute right-2 top-0 bottom-0 flex items-center pointer-events-none">
+        <div className="ml-2 flex items-center pointer-events-none">
           <svg
-            className={`w-4 h-4 transition-transform duration-200 ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`w-3 h-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
+            strokeWidth="4"
           >
             <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="3"
+              strokeLinecap="square"
+              strokeLinejoin="miter"
               d="M19 9l-7 7-7-7"
             />
           </svg>
@@ -71,7 +62,7 @@ export default function AlgorithmSelect({
       </button>
 
       {isOpen && (
-        <div className="absolute top-[calc(100%+2px)] left-[-2px] w-[calc(100%+4px)] border-2 border-black bg-white z-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <div className="absolute top-[calc(100%-2px)] left-[-2px] w-[calc(100%+4px)] border-2 border-black bg-white z-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] divide-y-2 divide-black">
           {options.map((opt) => (
             <button
               key={opt.id}
@@ -80,7 +71,11 @@ export default function AlgorithmSelect({
                 onChange(opt.id);
                 setIsOpen(false);
               }}
-              className="w-full p-2 text-left hover:bg-black hover:text-white transition-colors cursor-pointer"
+              className={`w-full p-2 text-left text-xs font-bold uppercase transition-colors cursor-pointer ${
+                value === opt.id
+                  ? "bg-zinc-100"
+                  : "hover:bg-black hover:text-white"
+              }`}
             >
               {opt.label}
             </button>

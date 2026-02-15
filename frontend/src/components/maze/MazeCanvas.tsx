@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { MazeData } from "@/hooks/useMazeGeneration";
 import { renderMazeImage } from "@/lib/api";
 
-const PADDING = 800; // Physical pixel buffer around the viewfinder
+const PADDING = 800;
 
 export default function MazeCanvas({ maze }: { maze: MazeData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -14,7 +14,6 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
   const dragStart = useRef({ x: 0, y: 0 });
   const [cssOffset, setCssOffset] = useState({ x: 0, y: 0 });
 
-  // RE-CENTER LOGIC:
   const centerMaze = useCallback(
     (cellSize: number) => {
       const container = containerRef.current;
@@ -114,7 +113,6 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
     return () => window.removeEventListener("resize", updateSize);
   }, [maze]);
 
-  // RESTORED SAVE LOGIC
   const handleSave = async () => {
     try {
       const blob = await renderMazeImage(maze);
@@ -145,7 +143,7 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
 
     const cellSize = dynamicCellSize;
     const scaledCell = cellSize * transform.s;
-    const OVERSCAN = 50; // Increased logical buffer
+    const OVERSCAN = 50;
 
     const startCol = Math.max(
       0,
@@ -247,7 +245,6 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
         <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-black z-20 pointer-events-none" />
       </div>
 
-      {/* RESTORED SAVE BUTTON (Bottom-Left) */}
       <div className="absolute bottom-6 left-6 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-30">
         <button
           onClick={handleSave}
@@ -271,7 +268,6 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
         </button>
       </div>
 
-      {/* Controls (Bottom-Right) */}
       <div className="absolute bottom-6 right-6 flex flex-col border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] divide-y-2 divide-black z-30">
         <button
           onClick={() => {

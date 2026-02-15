@@ -15,19 +15,43 @@ export default function Home() {
   const { maze, loading, error, executeGeneration, setError } =
     useMazeGeneration();
   const [genType, setGenType] = useState("image");
-  const [hasImage, setHasImage] = useState(false);
+
+  // 1. New State to persist the file across algorithm switches
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const { dims, updateDim, clampDimensions, handleImageChange } =
     useImageDimensions();
 
-  const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleImageChange(e);
-    setHasImage(!!e.target.files?.[0]);
+  // 2. Updated handler to accept both Input Events and raw Files (for drag-and-drop)
+  const onImageChange = (e: React.ChangeEvent<HTMLInputElement> | File) => {
+    let file: File | undefined;
+
+    if (e instanceof File) {
+      file = e;
+      // Manually trigger dimension hook if it expects an event,
+      // or update your hook to handle raw files.
+    } else {
+      file = e.target.files?.[0];
+      handleImageChange(e);
+    }
+
+    if (file) {
+      setSelectedFile(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     clampDimensions();
+
     const formData = new FormData(e.currentTarget);
+
+    // 3. Manually append the persisted file to FormData
+    // This ensures that even if the input was hidden/unmounted, the file is sent.
+    if (genType === "image" && selectedFile) {
+      formData.set("image", selectedFile);
+    }
+
     await executeGeneration(formData);
   };
 
@@ -39,10 +63,12 @@ export default function Home() {
         dims={dims}
         updateDim={updateDim}
         onImageChange={onImageChange}
+        selectedFile={selectedFile} // 4. Pass the file down to show "File Loaded" status
         onSubmit={handleSubmit}
         loading={loading}
         algorithms={ALGORITHMS}
-        isSubmitDisabled={loading || (genType === "image" && !hasImage)}
+        // Button is enabled if we have a persisted file, even if switching back and forth
+        isSubmitDisabled={loading || (genType === "image" && !selectedFile)}
       />
 
       {error && (
@@ -52,7 +78,6 @@ export default function Home() {
       )}
 
       <section className="relative border-4 border-black h-[750px] bg-zinc-50 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
-        {/* Header */}
         <div className="h-7 border-b-2 border-black bg-white flex items-center px-3 justify-between z-30 shrink-0">
           <span className="text-[10px] font-bold tracking-widest uppercase">
             MAZE_OUTPUT
@@ -63,7 +88,6 @@ export default function Home() {
           </span>
         </div>
 
-        {/* Maze Container */}
         <div className="relative flex-1 bg-white overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.05] pointer-events-none" />
           {maze ? (

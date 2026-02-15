@@ -1,4 +1,5 @@
 "use client";
+import { useState, useRef } from "react";
 import AlgorithmSelect from "@/components/ui/AlgorithmSelect";
 import GridDimensionsInput from "@/components/ui/GridDimensionsInput";
 
@@ -7,7 +8,8 @@ interface MazeControlsProps {
   setGenType: (val: string) => void;
   dims: { rows: number; cols: number };
   updateDim: (dim: "rows" | "cols", val: number) => void;
-  onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onImageChange: (e: React.ChangeEvent<HTMLInputElement> | File) => void;
+  selectedFile: File | null;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   loading: boolean;
   isSubmitDisabled: boolean;
@@ -20,17 +22,40 @@ export default function MazeControls({
   dims,
   updateDim,
   onImageChange,
+  selectedFile,
   onSubmit,
   loading,
   isSubmitDisabled,
   algorithms,
 }: MazeControlsProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setIsDragging(true);
+    else if (e.type === "dragleave") setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      onImageChange(e.dataTransfer.files[0]);
+    }
+  };
+
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-12 gap-6 items-end">
       <input type="hidden" name="type" value={genType} />
 
+      {/* Grid Dimensions - Matches h-[38px] inside its subcomponent */}
       <div className="col-span-3 space-y-2">
-        <label className="block font-bold">GRID_DIMENSIONS [2-300]</label>
+        <label className="block font-bold uppercase tracking-widest text-[10px]">
+          Grid_Dimensions [2-300]
+        </label>
         <GridDimensionsInput
           rows={dims.rows}
           cols={dims.cols}
@@ -38,6 +63,7 @@ export default function MazeControls({
         />
       </div>
 
+      {/* Algorithm Select - Has h-[38px] internally */}
       <div className="col-span-4 space-y-2">
         <label className="block font-bold uppercase tracking-widest text-[10px]">
           Algorithm
@@ -49,20 +75,46 @@ export default function MazeControls({
         />
       </div>
 
-      {genType === "image" && (
-        <div className="col-span-5 space-y-2 animate-in fade-in slide-in-from-left-2">
-          <label className="block font-bold text-[10px] uppercase tracking-widest">
-            Source_Image
-          </label>
+      {/* Source Image - Height forced to 38px to match others */}
+      <div
+        className={`col-span-5 space-y-2 transition-all ${
+          genType === "image"
+            ? "opacity-100"
+            : "opacity-0 pointer-events-none hidden"
+        }`}
+      >
+        <label className="block font-bold text-[10px] uppercase tracking-widest">
+          Source_Image
+        </label>
+        <div
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative w-full h-[38px] border-2 border-dashed flex items-stretch transition-colors cursor-pointer bg-white ${
+            isDragging ? "bg-zinc-100" : ""
+          }`}
+        >
           <input
+            ref={fileInputRef}
             name="image"
             type="file"
             accept="image/*"
-            onChange={onImageChange}
-            className="w-full border-2 border-black p-[5px] text-xs file:bg-black file:text-white file:border-none file:px-3 file:py-1 cursor-pointer"
+            onChange={(e) => onImageChange(e)}
+            className="hidden"
           />
+          <div className="flex-1 flex items-center px-3 min-w-0">
+            <span className="truncate text-[10px] font-bold uppercase tracking-tight">
+              {selectedFile ? selectedFile.name : "Select or drop image"}
+            </span>
+          </div>
+          {/* Browse button also matches height */}
+          <div className="border-l-2 border-black bg-black text-white px-3 flex items-center text-[10px] font-black uppercase tracking-tighter">
+            Browse
+          </div>
         </div>
-      )}
+      </div>
 
       <button
         type="submit"

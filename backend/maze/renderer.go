@@ -126,13 +126,11 @@ func (m *Maze) paintWall(img *image.RGBA, x, y, cellSize, direction, weight int)
 
 // shading translates mathematical weights into RGB values.
 func (m *Maze) getWallColor(weight int) color.RGBA {
-	// high weights are rendered black
-	if weight >= 1000 {
-		return color.RGBA{0, 0, 0, 255}
-	}
-
-	// low weights are rendered in light gray
-	// modulo variance provides a slight texture to empty spaces
-	intensity := uint8(230 - (weight % 30))
-	return color.RGBA{intensity, intensity, intensity, 255}
+    if weight >= 255 {
+        return color.RGBA{0, 0, 0, 255}
+    }
+    
+    // Linear scale: 220 down to 0
+    brightness := uint8(220 - (float64(weight) * (220.0 / 255.0)))
+    return color.RGBA{brightness, brightness, brightness, 255}
 }

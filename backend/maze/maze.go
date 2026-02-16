@@ -26,7 +26,7 @@ type Cell struct {
 	Col         int     `json:"col"`
 	Visited     bool    `json:"visited"`
 	Walls       [4]bool `json:"walls"`        // 0:Top, 1:Right, 2:Bottom, 3:Left
-	WallWeights [4]int  `json:"wall_weights"` // Useful if you want to debug edge values later
+	WallWeights [4]int  `json:"wall_weights"`
 }
 
 // SetManualStartEnd allows specific placement of entrance/exit
@@ -82,7 +82,6 @@ func (m *Maze) getRandomBorderPoint() (int, int) {
 	}
 }
 
-// clipBorderWall removes exterior boundary wall based on cell location.
 func (m *Maze) clipBorderWall(r, c int) {
 	if r == 0 {
 		m.Grid[r][c].Walls[0] = false

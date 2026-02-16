@@ -95,7 +95,6 @@ export default function MazeCanvas({
 
     const cellSize = dynamicCellSize;
 
-    // 1. Draw Visited/Exploration Path (Light Purple)
     ctx.fillStyle = "rgba(167, 139, 250, 0.4)";
     for (let i = 0; i < visibleHighlights; i++) {
       const point = highlights?.[i];
@@ -105,7 +104,6 @@ export default function MazeCanvas({
       }
     }
 
-    // 2. Draw Final Solution Path (Red)
     if (
       highlights &&
       visibleHighlights >= highlights.length &&
@@ -125,11 +123,11 @@ export default function MazeCanvas({
       ctx.stroke();
     }
 
-    // 3. Draw Maze Walls
-    const getWallColor = (w: number) =>
-      w >= 1000
-        ? "black"
-        : `rgb(${220 - (w % 30)},${220 - (w % 30)},${220 - (w % 30)})`;
+    const getWallColor = (w: number) => {
+      if (w >= 255) return "black";
+      const brightness = Math.floor(230 - w * (230 / 255));
+      return `rgb(${brightness}, ${brightness}, ${brightness})`;
+    };
 
     ctx.lineWidth = cellSize > 5 ? 1 : 0.5;
     const wallBatches: Record<string, Path2D> = {};
@@ -140,7 +138,6 @@ export default function MazeCanvas({
         const y = r * cellSize;
         const cell = maze.grid[r][c];
 
-        // Start/End Cells
         if (r === maze.start[0] && c === maze.start[1]) {
           ctx.fillStyle = "#90ee90";
           ctx.fillRect(x, y, cellSize, cellSize);

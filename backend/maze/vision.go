@@ -134,25 +134,24 @@ func applyNMS(mags, angles [][]float64, width, height int) [][]float64 {
 // Translate pixel magnitudes into Kruskal's weights.
 // and thresholds help maintain connectivity in the silhouette
 func mapToWeights(nmsMags [][]float64, rows, cols, width, height int) map[string]int {
-	weights := make(map[string]int)
-	highThresh := 100.0
-	lowThresh := 40.0
+    weights := make(map[string]int)
+    highThresh := 100.0
+    lowThresh := 40.0
 
-	for r := range rows {
-		for c := range cols {
-			imgX := c * width / cols
-			imgY := r * height / rows
+    for r := 0; r < rows; r++ {
+        for c := 0; c < cols; c++ {
+            imgX := c * width / cols
+            imgY := r * height / rows
+            mag := nmsMags[imgY][imgX]
 
-			mag := nmsMags[imgY][imgX]
-
-			if mag >= highThresh {
-				weights[fmt.Sprintf("%d-%d-top", r, c)] = 5000
-				weights[fmt.Sprintf("%d-%d-left", r, c)] = 5000
-			} else if mag >= lowThresh {
-				// moderate weight for supporting structural details.
-				weights[fmt.Sprintf("%d-%d-top", r, c)] = 1500
-			}
-		}
-	}
-	return weights
+            if mag >= highThresh {
+                weights[fmt.Sprintf("%d-%d-top", r, c)] = 255
+                weights[fmt.Sprintf("%d-%d-left", r, c)] = 255
+            } else if mag >= lowThresh {
+                weights[fmt.Sprintf("%d-%d-top", r, c)] = 120
+                weights[fmt.Sprintf("%d-%d-left", r, c)] = 120
+            }
+        }
+    }
+    return weights
 }

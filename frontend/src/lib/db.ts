@@ -14,7 +14,7 @@ export const initDB = (): Promise<IDBDatabase> => {
   });
 };
 
-export const saveLastMaze = async (maze: any) => {
+export const saveGenerateSession = async (maze: any) => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readwrite");
@@ -25,7 +25,7 @@ export const saveLastMaze = async (maze: any) => {
   });
 };
 
-export const loadLastMaze = async (): Promise<any> => {
+export const loadGenerateSession = async (): Promise<any> => {
   const db = await initDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readonly");
@@ -33,5 +33,40 @@ export const loadLastMaze = async (): Promise<any> => {
     const request = store.get("last_generated");
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
+  });
+};
+
+export const saveSolveSession = async (maze: any) => {
+  const db = await initDB();
+  const transaction = db.transaction(STORE_NAME, "readwrite");
+  transaction.objectStore(STORE_NAME).put(maze, "solve_session");
+};
+
+export const loadSolveSession = async (): Promise<any> => {
+  const db = await initDB();
+  const transaction = db.transaction(STORE_NAME, "readonly");
+  const request = transaction.objectStore(STORE_NAME).get("solve_session");
+  return new Promise((resolve) => {
+    request.onsuccess = () => resolve(request.result);
+  });
+};
+
+export const savePreferences = async (
+  key: "gen_prefs" | "solve_prefs",
+  prefs: any
+) => {
+  const db = await initDB();
+  const transaction = db.transaction(STORE_NAME, "readwrite");
+  transaction.objectStore(STORE_NAME).put(prefs, key);
+};
+
+export const loadPreferences = async (
+  key: "gen_prefs" | "solve_prefs"
+): Promise<any> => {
+  const db = await initDB();
+  const transaction = db.transaction(STORE_NAME, "readonly");
+  const request = transaction.objectStore(STORE_NAME).get(key);
+  return new Promise((resolve) => {
+    request.onsuccess = () => resolve(request.result);
   });
 };

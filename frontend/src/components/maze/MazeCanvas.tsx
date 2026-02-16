@@ -1,20 +1,20 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { MazeData } from "@/hooks/useMazeGeneration";
 import { useMazeCanvas } from "@/hooks/useMazeCanvas";
 import { renderMazeImage } from "@/lib/api";
 
-const PADDING = 800; // Used for panning overflow
+const PADDING = 800;
 
 interface MazeCanvasProps {
   maze: MazeData;
   showSave?: boolean;
   highlights?: [number, number][];
   solutionPath?: [number, number][];
-  // Overrides for real-time start/end marker updates
   overrideStart?: [number, number];
   overrideEnd?: [number, number];
   isPaused?: boolean;
+  onComplete?: () => void;
 }
 
 export default function MazeCanvas({
@@ -25,6 +25,7 @@ export default function MazeCanvas({
   overrideStart,
   overrideEnd,
   isPaused = false,
+  onComplete,
 }: MazeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visibleHighlights, setVisibleHighlights] = useState<number>(0);
@@ -40,9 +41,13 @@ export default function MazeCanvas({
     centerMaze,
   } = useMazeCanvas(maze);
 
-  // Dynamic Speed: 12 seconds = 720 frames at 60fps
-  const totalNodes = highlights.length + solutionPath.length;
-  const stepSize = Math.max(1, Math.ceil(totalNodes / 720));
+  const totalNodes = (highlights?.length || 0) + (solutionPath?.length || 0);
+  const stepSize = useMemo(() => Math.max(1, totalNodes / 720), [totalNodes]);
+
+  useEffect(() => {
+    setVisibleHighlights(0);
+    setVisibleSolutionStep(0);
+  }, [highlights, solutionPath]);
 
   const handleSave = async () => {
     try {
@@ -59,11 +64,6 @@ export default function MazeCanvas({
   };
 
   useEffect(() => {
-    setVisibleHighlights(0);
-    setVisibleSolutionStep(0);
-  }, [highlights, solutionPath]);
-
-  useEffect(() => {
     if (!highlights?.length || isPaused) return;
 
     let frame: number;
@@ -71,66 +71,98 @@ export default function MazeCanvas({
 
     const animate = (time: number) => {
       if (!lastTime) lastTime = time;
-      if (time - lastTime > 16) {
-        setVisibleHighlights((prev) => {
-          if (prev < highlights.length)
-            return Math.min(prev + stepSize, highlights.length);
+      const delta = time - lastTime;
 
-          setVisibleSolutionStep((solPrev) => {
-            if (solPrev < solutionPath.length)
-              return Math.min(solPrev + stepSize, solutionPath.length);
-            return solPrev;
+      if (delta > 16) {
+        setVisibleHighlights((prevH) => {
+          if (prevH < highlights.length) {
+            return Math.min(prevH + stepSize, highlights.length);
+          }
+
+          setVisibleSolutionStep((prevS) => {
+            const nextS = Math.min(prevS + stepSize, solutionPath.length);
+            // Completion check is now done in the next tick via logic below
+            return nextS;
           });
-          return prev;
+
+          return prevH;
         });
         lastTime = time;
       }
+
+      // Trigger completion after the UI has processed the update
+      if (
+        visibleHighlights >= highlights.length &&
+        visibleSolutionStep >= solutionPath.length &&
+        onComplete
+      ) {
+        onComplete();
+        return; // Stop the animation loop
+      }
+
       frame = requestAnimationFrame(animate);
     };
 
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [highlights, solutionPath, isPaused, stepSize]);
+  }, [
+    highlights,
+    solutionPath,
+    isPaused,
+    stepSize,
+    onComplete,
+    visibleHighlights,
+    visibleSolutionStep,
+  ]);
+
+  const highlightPath = useMemo(() => {
+    const path = new Path2D();
+    if (!dynamicCellSize || !highlights) return path;
+    const currentBatch = highlights.slice(0, Math.floor(visibleHighlights));
+    currentBatch.forEach(([r, c]) => {
+      path.rect(
+        c * dynamicCellSize,
+        r * dynamicCellSize,
+        dynamicCellSize,
+        dynamicCellSize
+      );
+    });
+    return path;
+  }, [visibleHighlights, highlights, dynamicCellSize]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container || !maze || dynamicCellSize === 0) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
 
-    // Set internal canvas size to match visible container + panning padding
     canvas.width = container.clientWidth + PADDING * 2;
     canvas.height = container.clientHeight + PADDING * 2;
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(transform.x + PADDING, transform.y + PADDING);
     ctx.scale(transform.s, transform.s);
 
     const cellSize = dynamicCellSize;
+    const sPoint = overrideStart || maze.start;
+    const ePoint = overrideEnd || maze.end;
 
-    // 1. Draw Visited Path
     ctx.fillStyle = "rgba(167, 139, 250, 0.4)";
-    for (let i = 0; i < visibleHighlights; i++) {
-      const point = highlights?.[i];
-      if (point)
-        ctx.fillRect(
-          point[1] * cellSize,
-          point[0] * cellSize,
-          cellSize,
-          cellSize
-        );
-    }
+    ctx.fill(highlightPath);
 
-    // 2. Draw Solution Path
     if (visibleHighlights >= highlights.length && solutionPath.length > 0) {
       ctx.strokeStyle = "#ef4444";
       ctx.lineWidth = cellSize * 0.4;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      const currentPath = solutionPath.slice(0, visibleSolutionStep);
+      const currentPath = solutionPath.slice(
+        0,
+        Math.floor(visibleSolutionStep)
+      );
       currentPath.forEach(([r, c], idx) => {
         const x = c * cellSize + cellSize / 2;
         const y = r * cellSize + cellSize / 2;
@@ -140,60 +172,66 @@ export default function MazeCanvas({
       ctx.stroke();
     }
 
-    // 3. Draw Maze Walls
-    const getWallColor = (w: number) => {
-      if (w >= 255) return "black";
-      const brightness = Math.floor(230 - w * (230 / 255));
-      return `rgb(${brightness}, ${brightness}, ${brightness})`;
-    };
+    const getWallColor = (w: number) =>
+      w >= 255
+        ? "black"
+        : `rgb(${Math.floor(230 - w * (230 / 255))},${Math.floor(230 - w * (230 / 255))},${Math.floor(230 - w * (230 / 255))})`;
+    ctx.fillStyle = "#90ee90";
+    ctx.fillRect(
+      sPoint[1] * cellSize,
+      sPoint[0] * cellSize,
+      cellSize,
+      cellSize
+    );
+    ctx.fillStyle = "#ff6347";
+    ctx.fillRect(
+      ePoint[1] * cellSize,
+      ePoint[0] * cellSize,
+      cellSize,
+      cellSize
+    );
 
-    const sPoint = overrideStart || maze.start;
-    const ePoint = overrideEnd || maze.end;
-
+    const wallBatches: Record<string, Path2D> = {};
     for (let r = 0; r < maze.rows; r++) {
       for (let c = 0; c < maze.cols; c++) {
-        const x = c * cellSize;
-        const y = r * cellSize;
-        if (r === sPoint[0] && c === sPoint[1]) {
-          ctx.fillStyle = "#90ee90";
-          ctx.fillRect(x, y, cellSize, cellSize);
-        } else if (r === ePoint[0] && c === ePoint[1]) {
-          ctx.fillStyle = "#ff6347";
-          ctx.fillRect(x, y, cellSize, cellSize);
-        }
-
+        const x = c * cellSize,
+          y = r * cellSize;
         maze.grid[r][c].walls.forEach((w, i) => {
           if (w) {
-            ctx.strokeStyle = getWallColor(maze.grid[r][c].wall_weights[i]);
-            ctx.lineWidth = cellSize > 5 ? 1 : 0.5;
-            ctx.beginPath();
+            const color = getWallColor(maze.grid[r][c].wall_weights[i]);
+            if (!wallBatches[color]) wallBatches[color] = new Path2D();
+            const p = wallBatches[color];
             if (i === 0) {
-              ctx.moveTo(x, y);
-              ctx.lineTo(x + cellSize, y);
+              p.moveTo(x, y);
+              p.lineTo(x + cellSize, y);
             }
             if (i === 1) {
-              ctx.moveTo(x + cellSize, y);
-              ctx.lineTo(x + cellSize, y + cellSize);
+              p.moveTo(x + cellSize, y);
+              p.lineTo(x + cellSize, y + cellSize);
             }
             if (i === 2) {
-              ctx.moveTo(x, y + cellSize);
-              ctx.lineTo(x + cellSize, y + cellSize);
+              p.moveTo(x, y + cellSize);
+              p.lineTo(x + cellSize, y + cellSize);
             }
             if (i === 3) {
-              ctx.moveTo(x, y);
-              ctx.lineTo(x, y + cellSize);
+              p.moveTo(x, y);
+              p.lineTo(x, y + cellSize);
             }
-            ctx.stroke();
           }
         });
       }
     }
+    ctx.lineWidth = cellSize > 5 ? 1 : 0.5;
+    Object.entries(wallBatches).forEach(([color, path]) => {
+      ctx.strokeStyle = color;
+      ctx.stroke(path);
+    });
     ctx.restore();
   }, [
     maze,
     dynamicCellSize,
     transform,
-    visibleHighlights,
+    highlightPath,
     visibleSolutionStep,
     overrideStart,
     overrideEnd,
@@ -214,11 +252,6 @@ export default function MazeCanvas({
         >
           <canvas ref={canvasRef} className="block select-none" />
         </div>
-        {/* Brackets */}
-        <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-black z-20 pointer-events-none" />
-        <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-black z-20 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-black z-20 pointer-events-none" />
-        <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-black z-20 pointer-events-none" />
       </div>
 
       {showSave && (

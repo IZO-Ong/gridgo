@@ -27,7 +27,7 @@ func GetEdgeWeights(r io.Reader, rows, cols int) (map[string]int, error) {
 	gray := convertToGrayscale(img, bounds)
 	mags, angles := computeGradients(gray, width, height)
 	nmsMags := applyNMS(mags, angles, width, height)
-	weights := mapToWeights(nmsMags, rows, cols, width, height)
+	weights := mapToWeights(nmsMags, angles, rows, cols, width, height)
 
 	return weights, nil
 }
@@ -133,25 +133,48 @@ func applyNMS(mags, angles [][]float64, width, height int) [][]float64 {
 
 // Translate pixel magnitudes into Kruskal's weights.
 // and thresholds help maintain connectivity in the silhouette
-func mapToWeights(nmsMags [][]float64, rows, cols, width, height int) map[string]int {
-    weights := make(map[string]int)
-    highThresh := 100.0
-    lowThresh := 40.0
+func mapToWeights(nmsMags [][]float64, angles [][]float64, rows, cols, width, height int) map[string]int {
+	weights := make(map[string]int)
 
-    for r := 0; r < rows; r++ {
-        for c := 0; c < cols; c++ {
-            imgX := c * width / cols
-            imgY := r * height / rows
-            mag := nmsMags[imgY][imgX]
+	highThresh := 80.0
+	lowThresh := 30.0
 
-            if mag >= highThresh {
-                weights[fmt.Sprintf("%d-%d-top", r, c)] = 255
-                weights[fmt.Sprintf("%d-%d-left", r, c)] = 255
-            } else if mag >= lowThresh {
-                weights[fmt.Sprintf("%d-%d-top", r, c)] = 120
-                weights[fmt.Sprintf("%d-%d-left", r, c)] = 120
-            }
-        }
-    }
-    return weights
+	for r := range rows {
+		for c := range cols {
+			startY, endY := r*height/rows, (r+1)*height/rows
+			startX, endX := c*width/cols, (c+1)*width/cols
+
+			maxMag := 0.0
+			bestAngle := 0.0
+
+			for y := startY; y < endY && y < height; y++ {
+				for x := startX; x < endX && x < width; x++ {
+					if nmsMags[y][x] > maxMag {
+						maxMag = nmsMags[y][x]
+						bestAngle = angles[y][x]
+					}
+				}
+			}
+
+			if maxMag < lowThresh {
+				continue
+			}
+
+			var weight int
+			if maxMag >= highThresh {
+				weight = 255
+			} else {
+				weight = 120 + int((maxMag-lowThresh)/(highThresh-lowThresh)*135)
+			}
+
+			if (bestAngle >= 0 && bestAngle < 45) || (bestAngle >= 135 && bestAngle <= 180) {
+				weights[fmt.Sprintf("%d-%d-left", r, c)] = weight
+				weights[fmt.Sprintf("%d-%d-top", r, c)] = weight / 2
+			} else {
+				weights[fmt.Sprintf("%d-%d-top", r, c)] = weight
+				weights[fmt.Sprintf("%d-%d-left", r, c)] = weight / 2
+			}
+		}
+	}
+	return weights
 }

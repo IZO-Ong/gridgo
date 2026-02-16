@@ -8,7 +8,7 @@ import { solveMaze } from "@/lib/api";
 const SOLVE_ALGORITHMS = [
   { id: "astar", label: "A*_SEARCH" },
   { id: "bfs", label: "BREADTH_FIRST" },
-  { id: "dfs", label: "DEPTH_FIRST" },
+  { id: "greedy", label: "GREEDY_SEARCH" },
 ];
 
 export default function SolvePage() {
@@ -16,11 +16,11 @@ export default function SolvePage() {
   const [activeMaze, setActiveMaze] = useState<MazeData | null>(null);
   const [solveType, setSolveType] = useState("astar");
   const [isSolving, setIsSolving] = useState(false);
+
   const [mazeId] = useState("G-7724-X");
 
   const [startPoint, setStartPoint] = useState<[number, number]>([0, 0]);
   const [endPoint, setEndPoint] = useState<[number, number]>([0, 0]);
-
   const [solution, setSolution] = useState<{
     visited: [number, number][];
     path: [number, number][];
@@ -58,6 +58,7 @@ export default function SolvePage() {
   const handleRunSolver = async () => {
     if (!activeMaze) return;
     setIsSolving(true);
+    setSolution(null); // Reset animation buffer for new solve
 
     const mazeToSolve = {
       ...activeMaze,
@@ -176,22 +177,31 @@ export default function SolvePage() {
       </form>
 
       <section className="relative border-4 border-black h-[750px] bg-zinc-50 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
+        {/* Header Metadata */}
         <div className="h-7 border-b-2 border-black bg-white flex items-center px-3 justify-between z-30 shrink-0">
           <span className="text-[10px] font-bold tracking-widest uppercase">
             SOLVER_OUTPUT{" "}
             {activeMaze ? `[${activeMaze.rows}X${activeMaze.cols}]` : ""}
           </span>
-          <span className="text-[10px] opacity-30 font-bold uppercase">
-            PATH_NODES: {solution ? solution.path.length : "--"}
-          </span>
+          <div className="flex gap-4">
+            <span className="text-[10px] opacity-30 font-bold uppercase">
+              VISITED: {solution ? solution.visited.length : "--"}
+            </span>
+            <span className="text-[10px] opacity-30 font-bold uppercase">
+              PATH: {solution ? solution.path.length : "--"}
+            </span>
+          </div>
         </div>
 
         <div className="relative flex-1 bg-white overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.05] pointer-events-none" />
-
           <div className="h-full w-full flex items-center justify-center">
             {activeMaze ? (
-              <MazeCanvas maze={activeMaze} showSave={false} />
+              <MazeCanvas
+                maze={activeMaze}
+                showSave={false}
+                highlights={solution?.visited}
+                solutionPath={solution?.path}
+              />
             ) : (
               <p className="opacity-20 tracking-[0.5em] font-bold uppercase text-2xl">
                 Load a maze to solve

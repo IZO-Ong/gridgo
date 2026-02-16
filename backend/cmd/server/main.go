@@ -135,8 +135,8 @@ func handleSolveMaze(w http.ResponseWriter, r *http.Request) {
 		visited, path = payload.Maze.SolveAStar()
 	case "bfs":
 		visited, path = payload.Maze.SolveBFS()
-	case "dfs":
-		visited, path = payload.Maze.SolveDFS()
+	case "greedy":
+    	visited, path = payload.Maze.SolveGreedy()
 	default:
 		http.Error(w, "Unsupported algorithm", http.StatusBadRequest)
 		return

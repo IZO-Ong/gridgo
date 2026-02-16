@@ -89,17 +89,18 @@ func (m *Maze) SolveBFS() ([][2]int, [][2]int) {
 	return visited, nil
 }
 
-func (m *Maze) SolveDFS() ([][2]int, [][2]int) {
+func (m *Maze) SolveGreedy() ([][2]int, [][2]int) {
 	start, end := Point{m.Start[0], m.Start[1]}, Point{m.End[0], m.End[1]}
-	visited := [][2]int{}
-	stack := []Point{start}
-	cameFrom := make(map[Point]Point)
+	visited, cameFrom := [][2]int{}, make(map[Point]Point)
 	seen := map[Point]bool{start: true}
 
-	for len(stack) > 0 {
-		curr := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		
+	pq := &PriorityQueue{}
+	heap.Init(pq)
+	// Initial priority is just the distance to the end
+	heap.Push(pq, &Item{point: start, priority: m.manhattan(start, end)})
+
+	for pq.Len() > 0 {
+		curr := heap.Pop(pq).(*Item).point
 		visited = append(visited, [2]int{curr[0], curr[1]})
 
 		if curr == end {
@@ -110,12 +111,12 @@ func (m *Maze) SolveDFS() ([][2]int, [][2]int) {
 			if !seen[next] {
 				seen[next] = true
 				cameFrom[next] = curr
-				stack = append(stack, next)
+				priority := m.manhattan(next, end)
+				heap.Push(pq, &Item{point: next, priority: priority})
 			}
 		}
 	}
-
-	return visited, nil
+	return visited, [][2]int{}
 }
 
 func (m *Maze) manhattan(p1, p2 Point) int {

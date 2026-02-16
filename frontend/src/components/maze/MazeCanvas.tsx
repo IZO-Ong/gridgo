@@ -21,6 +21,7 @@ export default function MazeCanvas({
 }: MazeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visibleHighlights, setVisibleHighlights] = useState<number>(0);
+  const [visibleSolutionStep, setVisibleSolutionStep] = useState(0);
 
   const {
     containerRef,
@@ -46,17 +47,16 @@ export default function MazeCanvas({
     }
   };
 
-  // Reset counter when a new search starts
+  // UNIFIED ANIMATION LOGIC
   useEffect(() => {
     setVisibleHighlights(0);
-  }, [highlights]);
+    setVisibleSolutionStep(0);
 
-  // Animation Buffer with Throttled Speed
-  useEffect(() => {
     if (!highlights || highlights.length === 0) return;
 
     let frame: number;
     let lastTime = 0;
+    const stepSize = 7;
 
     const animate = (time: number) => {
       if (!lastTime) lastTime = time;
@@ -64,10 +64,19 @@ export default function MazeCanvas({
 
       if (deltaTime > 16) {
         setVisibleHighlights((prev) => {
+          // 1. Buffer exploration highlights first
           if (prev < highlights.length) {
-            // Incremental step of 5 nodes per frame for a visible "scan"
-            return Math.min(prev + 5, highlights.length);
+            return Math.min(prev + stepSize, highlights.length);
           }
+
+          // 2. Once highlights are done, buffer the red solution path
+          setVisibleSolutionStep((solPrev) => {
+            if (solPrev < solutionPath.length) {
+              return Math.min(solPrev + stepSize, solutionPath.length);
+            }
+            return solPrev;
+          });
+
           return prev;
         });
         lastTime = time;
@@ -77,7 +86,7 @@ export default function MazeCanvas({
 
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [highlights]);
+  }, [highlights, solutionPath]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -95,26 +104,30 @@ export default function MazeCanvas({
 
     const cellSize = dynamicCellSize;
 
+    // 1. Draw Visited Path
     ctx.fillStyle = "rgba(167, 139, 250, 0.4)";
     for (let i = 0; i < visibleHighlights; i++) {
       const point = highlights?.[i];
       if (point) {
-        const [r, c] = point;
-        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+        ctx.fillRect(
+          point[1] * cellSize,
+          point[0] * cellSize,
+          cellSize,
+          cellSize
+        );
       }
     }
 
-    if (
-      highlights &&
-      visibleHighlights >= highlights.length &&
-      solutionPath.length > 0
-    ) {
+    // 2. Draw Buffered Final Solution Path
+    if (visibleHighlights >= highlights.length && solutionPath.length > 0) {
       ctx.strokeStyle = "#ef4444";
       ctx.lineWidth = cellSize * 0.4;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      solutionPath.forEach(([r, c], idx) => {
+
+      const currentPath = solutionPath.slice(0, visibleSolutionStep);
+      currentPath.forEach(([r, c], idx) => {
         const x = c * cellSize + cellSize / 2;
         const y = r * cellSize + cellSize / 2;
         if (idx === 0) ctx.moveTo(x, y);
@@ -123,6 +136,7 @@ export default function MazeCanvas({
       ctx.stroke();
     }
 
+    // 3. Draw Maze Walls
     const getWallColor = (w: number) => {
       if (w >= 255) return "black";
       const brightness = Math.floor(230 - w * (230 / 255));
@@ -177,11 +191,13 @@ export default function MazeCanvas({
       ctx.stroke(path);
     });
     ctx.restore();
+    // ADDED visibleSolutionStep TO DEPENDENCIES
   }, [
     maze,
     dynamicCellSize,
     transform,
     visibleHighlights,
+    visibleSolutionStep,
     solutionPath,
     highlights,
   ]);
@@ -203,29 +219,6 @@ export default function MazeCanvas({
           <canvas ref={canvasRef} className="block select-none" />
         </div>
       </div>
-
-      {showSave && (
-        <div className="absolute bottom-6 left-6 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-30">
-          <button
-            onClick={handleSave}
-            title="SAVE_SYSTEM_IMAGE"
-            className="p-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-            >
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-          </button>
-        </div>
-      )}
 
       {/* Viewport Controls */}
       <div className="absolute bottom-6 right-6 flex flex-col border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] divide-y-2 divide-black z-30">

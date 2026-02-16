@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 const seededRandom = (r: number, c: number) => {
   let h = (r * 0x45d9f3b) ^ c;
@@ -11,30 +12,16 @@ const seededRandom = (r: number, c: number) => {
 
 export default function MazeMargin({ side }: { side: "left" | "right" }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pathname = usePathname();
   const [opacity, setOpacity] = useState(1);
 
-  // Map the side to specific Tailwind classes so the compiler can find them
   const sideClasses = {
-    left: "left-0",
-    right: "right-0",
+    left: "left-0 border-r-2",
+    right: "right-0 border-l-2",
   };
 
   useEffect(() => {
-    const handleZoomOpacity = () => {
-      const width = window.innerWidth;
-      const startFade = 1200;
-      const endFade = 1100;
-
-      if (width < endFade) {
-        setOpacity(0);
-      } else if (width > startFade) {
-        setOpacity(1);
-      } else {
-        setOpacity((width - endFade) / (startFade - endFade));
-      }
-    };
-
-    const updateCanvas = () => {
+    const drawMaze = () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
@@ -43,21 +30,26 @@ export default function MazeMargin({ side }: { side: "left" | "right" }) {
       const marginWidth = 70;
       const cols = 7;
       const cellSize = marginWidth / cols;
+      const BUFFER_ROWS = 3; // Added extra rows to ensure full coverage
 
-      const rawHeight = document.documentElement.scrollHeight;
-      const fixedHeight = Math.ceil(rawHeight / cellSize) * cellSize;
+      const content = document.getElementById("main-content-wrapper");
+      const pageHeight = content
+        ? Math.max(content.offsetHeight, window.innerHeight)
+        : window.innerHeight;
 
-      if (canvas.height !== fixedHeight) {
-        canvas.width = marginWidth;
-        canvas.height = fixedHeight;
-      }
+      // Calculate rows and add the buffer
+      const rows = Math.ceil(pageHeight / cellSize) + BUFFER_ROWS;
+      const fixedHeight = rows * cellSize;
+
+      if (Math.abs(canvas.height - fixedHeight) < cellSize) return;
+
+      canvas.width = marginWidth;
+      canvas.height = fixedHeight;
 
       ctx.strokeStyle = "black";
       ctx.lineWidth = 1.5;
       ctx.lineCap = "square";
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const rows = fixedHeight / cellSize;
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -87,7 +79,6 @@ export default function MazeMargin({ side }: { side: "left" | "right" }) {
         }
       }
 
-      // Vertical Sidebar Border
       ctx.beginPath();
       const borderX = side === "left" ? canvas.width - 1 : 1;
       ctx.moveTo(borderX, 0);
@@ -95,27 +86,19 @@ export default function MazeMargin({ side }: { side: "left" | "right" }) {
       ctx.stroke();
     };
 
-    handleZoomOpacity();
-    updateCanvas();
+    const observer = new ResizeObserver(() => drawMaze());
+    const content = document.getElementById("main-content-wrapper");
+    if (content) observer.observe(content);
 
-    window.addEventListener("resize", handleZoomOpacity);
-    const resizeObserver = new ResizeObserver(() => updateCanvas());
-    resizeObserver.observe(document.body);
-
-    return () => {
-      window.removeEventListener("resize", handleZoomOpacity);
-      resizeObserver.disconnect();
-    };
-  }, [side]);
+    drawMaze();
+    return () => observer.disconnect();
+  }, [side, pathname]);
 
   return (
     <canvas
       ref={canvasRef}
-      className={`absolute top-0 ${sideClasses[side]} pointer-events-none z-0 transition-opacity duration-150 ease-out`}
-      style={{
-        width: "70px",
-        opacity: opacity,
-      }}
+      className={`absolute top-0 ${sideClasses[side]} pointer-events-none z-0 transition-opacity duration-150 border-black`}
+      style={{ width: "70px", opacity: opacity }}
     />
   );
 }

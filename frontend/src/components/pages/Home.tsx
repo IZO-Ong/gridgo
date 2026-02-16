@@ -15,7 +15,6 @@ export default function Home() {
   const { maze, loading, error, executeGeneration } = useMazeGeneration();
   const [genType, setGenType] = useState("image");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
   const { dims, updateDim, clampDimensions, handleImageChange } =
     useImageDimensions();
 
@@ -37,17 +36,11 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     clampDimensions();
-
     const formData = new FormData(e.currentTarget);
     if (genType === "image" && selectedFile) {
       formData.set("image", selectedFile);
     }
-
-    const newMaze = await executeGeneration(formData);
-
-    if (newMaze) {
-      sessionStorage.setItem("last_generated_maze", JSON.stringify(newMaze));
-    }
+    await executeGeneration(formData);
   };
 
   return (
@@ -66,9 +59,7 @@ export default function Home() {
       />
 
       {error && (
-        <div className="p-3 bg-red-50 border-2 border-red-600 text-red-600 font-bold uppercase">
-          {`>> ERROR: ${error}`}
-        </div>
+        <div className="p-3 bg-red-50 border-2 border-red-600 text-red-600 font-bold uppercase">{`>> ERROR: ${error}`}</div>
       )}
 
       <section className="relative border-4 border-black h-[750px] bg-zinc-50 overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col">
@@ -81,8 +72,7 @@ export default function Home() {
             {maze ? `${maze.rows}x${maze.cols}` : `${dims.rows}x${dims.cols}`}
           </span>
         </div>
-
-        <div className="relative flex-1 bg-white overflow-hidden">
+        <div className="relative flex-1 bg-white">
           <div className="absolute inset-0 bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.05] pointer-events-none" />
           {maze ? (
             <MazeCanvas maze={maze} />

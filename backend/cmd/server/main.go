@@ -13,6 +13,7 @@ func main() {
 	
 	mux.HandleFunc("/api/maze/generate", handleGenerateMaze)
 	mux.HandleFunc("/api/maze/render", handleRenderMaze)
+	mux.HandleFunc("/api/maze/solve", handleSolveMaze)
 
 	println("GridGo API running on port 8080")
 	http.ListenAndServe(":8080", enableCORS(mux))
@@ -107,4 +108,43 @@ func handleRenderMaze(w http.ResponseWriter, r *http.Request) {
 
     w.Header().Set("Content-Type", "image/png")
     m.RenderToWriter(w, 10) 
+}
+
+func handleSolveMaze(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions { return }
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		Maze      maze.Maze `json:"maze"`
+		Algorithm string    `json:"algorithm"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	var visited [][2]int
+	var path [][2]int
+
+	switch payload.Algorithm {
+	case "astar":
+		visited, path = payload.Maze.SolveAStar()
+	case "bfs":
+		visited, path = payload.Maze.SolveBFS()
+	case "dfs":
+		visited, path = payload.Maze.SolveDFS()
+	default:
+		http.Error(w, "Unsupported algorithm", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"visited": visited,
+		"path":    path,
+	})
 }

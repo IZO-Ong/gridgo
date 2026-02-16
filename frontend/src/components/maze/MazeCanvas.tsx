@@ -1,14 +1,18 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { MazeData } from "@/hooks/useMazeGeneration";
-import { useMazeCanvas } from "@/hooks/useMazeCanvas"; // Adjust path as needed
+import { useMazeCanvas } from "@/hooks/useMazeCanvas";
 import { renderMazeImage } from "@/lib/api";
 
 const PADDING = 800;
 
-export default function MazeCanvas({ maze }: { maze: MazeData }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+interface MazeCanvasProps {
+  maze: MazeData;
+  showSave?: boolean;
+}
 
+export default function MazeCanvas({ maze, showSave = true }: MazeCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const {
     containerRef,
     dynamicCellSize,
@@ -33,7 +37,6 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
     }
   };
 
-  // Drawing Logic
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -124,7 +127,7 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
       ctx.stroke(path);
     });
     ctx.restore();
-  }, [maze, dynamicCellSize, transform, containerRef]);
+  }, [maze, dynamicCellSize, transform]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center p-8">
@@ -143,32 +146,35 @@ export default function MazeCanvas({ maze }: { maze: MazeData }) {
           <canvas ref={canvasRef} className="block select-none" />
         </div>
 
+        {/* Viewport Brackets */}
         <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-black z-20 pointer-events-none" />
         <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-black z-20 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-black z-20 pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-black z-20 pointer-events-none" />
       </div>
 
-      <div className="absolute bottom-6 left-6 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-30">
-        <button
-          onClick={handleSave}
-          title="SAVE_SYSTEM_IMAGE"
-          className="p-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
+      {showSave && (
+        <div className="absolute bottom-6 left-6 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-30">
+          <button
+            onClick={handleSave}
+            title="SAVE_SYSTEM_IMAGE"
+            className="p-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
           >
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-            <polyline points="17 21 17 13 7 13 7 21"></polyline>
-            <polyline points="7 3 7 8 15 8"></polyline>
-          </svg>
-        </button>
-      </div>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </button>
+        </div>
+      )}
 
       <div className="absolute bottom-6 right-6 flex flex-col border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] divide-y-2 divide-black z-30">
         <button

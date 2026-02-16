@@ -29,6 +29,12 @@ export function useMazeCanvas(maze: MazeData | null) {
     [maze]
   );
 
+  const commitDrag = useCallback((offset: { x: number; y: number }) => {
+    setTransform((p) => ({ ...p, x: p.x + offset.x, y: p.y + offset.y }));
+    setCssOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, []);
+
   const handleZoom = useCallback(
     (delta: number, mouseX?: number, mouseY?: number) => {
       setTransform((prev) => {
@@ -48,35 +54,25 @@ export function useMazeCanvas(maze: MazeData | null) {
     []
   );
 
-  const commitDrag = useCallback((offset: { x: number; y: number }) => {
-    setTransform((p) => ({ ...p, x: p.x + offset.x, y: p.y + offset.y }));
-    setCssOffset({ x: 0, y: 0 });
-    setIsDragging(false);
-  }, []);
-
-  // Sync initial centering and window resizing
+  // Re-center when maze or cell size changes
   useEffect(() => {
     if (dynamicCellSize > 0) centerMaze(dynamicCellSize);
   }, [maze, dynamicCellSize, centerMaze]);
 
+  // Handle zooming via native wheel events
   useEffect(() => {
-    if (!containerRef.current || !maze) return;
-    const updateSize = () => {
-      const parent = containerRef.current?.closest("section");
-      if (!parent) return;
-      setDynamicCellSize(
-        Math.min(
-          (parent.clientWidth - 128) / maze.cols,
-          (parent.clientHeight - 128) / maze.rows
-        )
-      );
+    const container = containerRef.current;
+    if (!container) return;
+    const handleNativeWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = container.getBoundingClientRect();
+      handleZoom(e.deltaY, e.clientX - rect.left, e.clientY - rect.top);
     };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
-  }, [maze]);
+    container.addEventListener("wheel", handleNativeWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleNativeWheel);
+  }, [handleZoom]);
 
-  // Global Mouse Events for Dragging
+  // Global drag listeners
   useEffect(() => {
     if (!isDragging) return;
     const handleGlobalMove = (e: MouseEvent) => {
@@ -99,18 +95,23 @@ export function useMazeCanvas(maze: MazeData | null) {
     };
   }, [isDragging, commitDrag]);
 
-  // Native Wheel Listener
+  // Handle dynamic sizing based on parent container
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const handleNativeWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = container.getBoundingClientRect();
-      handleZoom(e.deltaY, e.clientX - rect.left, e.clientY - rect.top);
+    if (!containerRef.current || !maze) return;
+    const updateSize = () => {
+      const parent = containerRef.current?.closest("section");
+      if (!parent) return;
+      setDynamicCellSize(
+        Math.min(
+          (parent.clientWidth - 128) / maze.cols,
+          (parent.clientHeight - 128) / maze.rows
+        )
+      );
     };
-    container.addEventListener("wheel", handleNativeWheel, { passive: false });
-    return () => container.removeEventListener("wheel", handleNativeWheel);
-  }, [handleZoom]);
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, [maze]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);

@@ -181,3 +181,30 @@ func (m *Maze) RemoveWalls(r1, c1, r2, c2 int) {
 		}
 	}
 }
+
+// GetNeighbors returns a slice of adjacent points that can be reached from 
+// the current point (i.e., they are within bounds and not blocked by a wall).
+func (m *Maze) GetNeighbors(p Point) []Point {
+	neighbors := []Point{}
+	r, c := p[0], p[1]
+
+	dirs := [][]int{
+		{-1, 0, 0}, // North
+		{0, 1, 1},  // East
+		{1, 0, 2},  // South
+		{0, -1, 3}, // West
+	}
+
+	for _, d := range dirs {
+		nr, nc := r+d[0], c+d[1]
+		wallIdx := d[2]
+
+		if nr >= 0 && nr < m.Rows && nc >= 0 && nc < m.Cols {
+			if !m.Grid[r][c].Walls[wallIdx] {
+				neighbors = append(neighbors, Point{nr, nc})
+			}
+		}
+	}
+
+	return neighbors
+}

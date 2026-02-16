@@ -33,3 +33,18 @@ export async function renderMazeImage(mazeData: any) {
 
   return response.blob();
 }
+
+export async function solveMaze(mazeData: any, algorithm: string) {
+  const response = await fetch(`${BASE_URL}/solve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ maze: mazeData, algorithm }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "SYSTEM_SOLVE_FAILURE");
+  }
+
+  return response.json();
+}

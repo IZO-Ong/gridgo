@@ -20,14 +20,19 @@ export function useMazeGeneration() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const executeGeneration = async (formData: FormData) => {
+  const executeGeneration = async (
+    formData: FormData
+  ): Promise<MazeData | null> => {
     setLoading(true);
     setError(null);
     try {
       const data = await generateMaze(formData);
       setMaze(data);
+      return data;
     } catch (err: any) {
-      setError(err.message || "SYSTEM_FAILURE");
+      const msg = err.message || "SYSTEM_FAILURE";
+      setError(msg);
+      return null;
     } finally {
       setLoading(false);
     }

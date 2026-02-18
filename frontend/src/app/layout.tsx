@@ -13,9 +13,8 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-white text-black relative font-mono overflow-x-hidden">
         <AuthProvider>
-          <MazeMargin side="left" />
+          <MazeMargin side="left" flip />
           <MazeMargin side="right" />
-
           <div
             id="main-content-wrapper"
             className="relative z-10 max-w-5xl mx-auto flex flex-col"

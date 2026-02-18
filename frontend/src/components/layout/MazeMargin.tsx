@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const seededRandom = (r: number, c: number) => {
@@ -10,14 +10,21 @@ const seededRandom = (r: number, c: number) => {
   return h % 100 > 50;
 };
 
-export default function MazeMargin({ side }: { side: "left" | "right" }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pathname = usePathname();
+// Added 'flip' parameter
+export default function MazeMargin({
+  side,
+  flip,
+}: {
+  side: "left" | "right";
+  flip?: boolean;
+}) {
+  const [bgPattern, setBgPattern] = useState<string>("");
   const [opacity, setOpacity] = useState(1);
+  const pathname = usePathname();
 
   const sideClasses = {
-    left: "left-0 border-r-2",
-    right: "right-0 border-l-2",
+    left: "left-0",
+    right: "right-0",
   };
 
   useEffect(() => {
@@ -25,14 +32,9 @@ export default function MazeMargin({ side }: { side: "left" | "right" }) {
       const width = window.innerWidth;
       const startFade = 1200;
       const endFade = 1100;
-
-      if (width < endFade) {
-        setOpacity(0);
-      } else if (width > startFade) {
-        setOpacity(1);
-      } else {
-        setOpacity((width - endFade) / (startFade - endFade));
-      }
+      if (width < endFade) setOpacity(0);
+      else if (width > startFade) setOpacity(1);
+      else setOpacity((width - endFade) / (startFade - endFade));
     };
 
     window.addEventListener("resize", handleZoomOpacity);
@@ -41,83 +43,71 @@ export default function MazeMargin({ side }: { side: "left" | "right" }) {
   }, []);
 
   useEffect(() => {
-    const drawMaze = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    const marginWidth = 70;
+    const cols = 7;
+    const cellSize = marginWidth / cols;
+    const tileRows = 50;
 
-      const marginWidth = 70;
-      const cols = 7;
-      const cellSize = marginWidth / cols;
-      const BUFFER_ROWS = 3;
+    const canvas = document.createElement("canvas");
+    canvas.width = marginWidth;
+    canvas.height = tileRows * cellSize;
+    const ctx = canvas.getContext("2d");
 
-      const content = document.getElementById("main-content-wrapper");
-      const pageHeight = content
-        ? Math.max(content.offsetHeight, window.innerHeight)
-        : window.innerHeight;
-
-      const rows = Math.ceil(pageHeight / cellSize) + BUFFER_ROWS;
-      const fixedHeight = rows * cellSize;
-
-      if (Math.abs(canvas.height - fixedHeight) < cellSize) return;
-
-      canvas.width = marginWidth;
-      canvas.height = fixedHeight;
-
+    if (ctx) {
       ctx.strokeStyle = "black";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2; // Updated to 2 as requested
       ctx.lineCap = "square";
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      for (let r = 0; r < rows; r++) {
+      // Draw Main Borders
+      ctx.beginPath();
+      // Adjusting offset for lineWidth 2
+      ctx.moveTo(1, 0);
+      ctx.lineTo(1, canvas.height);
+      ctx.moveTo(marginWidth - 1, 0);
+      ctx.lineTo(marginWidth - 1, canvas.height);
+      ctx.stroke();
+
+      // Draw Maze Pattern
+      for (let r = 0; r < tileRows; r++) {
         for (let c = 0; c < cols; c++) {
           const x = c * cellSize;
           const y = r * cellSize;
           const carveNorth = seededRandom(r, c);
 
           ctx.beginPath();
-          if (r === 0 && c === cols - 1) continue;
-
-          if (r === 0) {
-            ctx.moveTo(x + cellSize, y);
-            ctx.lineTo(x + cellSize, y + cellSize);
-          } else if (c === cols - 1) {
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + cellSize, y);
-          } else {
-            if (carveNorth) {
-              ctx.moveTo(x, y);
-              ctx.lineTo(x + cellSize, y);
-            } else {
+          if (r !== 0 || c !== cols - 1) {
+            if (r === 0) {
               ctx.moveTo(x + cellSize, y);
               ctx.lineTo(x + cellSize, y + cellSize);
+            } else if (c < cols - 1) {
+              if (carveNorth) {
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + cellSize, y);
+              } else {
+                ctx.moveTo(x + cellSize, y);
+                ctx.lineTo(x + cellSize, y + cellSize);
+              }
             }
           }
           ctx.stroke();
         }
       }
-
-      ctx.beginPath();
-      const borderX = side === "left" ? canvas.width - 1 : 1;
-      ctx.moveTo(borderX, 0);
-      ctx.lineTo(borderX, canvas.height);
-      ctx.stroke();
-    };
-
-    const observer = new ResizeObserver(() => drawMaze());
-    const content = document.getElementById("main-content-wrapper");
-    if (content) observer.observe(content);
-
-    drawMaze();
-    return () => observer.disconnect();
-  }, [side, pathname]);
+      setBgPattern(canvas.toDataURL());
+    }
+  }, [pathname]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className={`absolute top-0 ${sideClasses[side]} pointer-events-none z-0 transition-opacity duration-150 border-black`}
-      style={{ width: "70px", opacity: opacity }}
+    <div
+      className={`absolute top-0 bottom-0 ${sideClasses[side]} pointer-events-none z-0 transition-opacity duration-150`}
+      style={{
+        width: "70px",
+        opacity: opacity,
+        backgroundImage: `url(${bgPattern})`,
+        backgroundRepeat: "repeat-y",
+        backgroundSize: "70px auto",
+        transform: flip ? "scaleX(-1)" : "none",
+      }}
     />
   );
 }

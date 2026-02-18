@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/context/AuthContext"; // 1. Import the hook
+import { useAuth } from "@/context/AuthContext";
 
 export default function NavBar() {
-  const { user, logout } = useAuth(); // 2. Use global state instead of local state
+  const { user, logout } = useAuth();
   const pathname = usePathname();
 
   const navItems = [
@@ -13,10 +13,8 @@ export default function NavBar() {
     { label: "Forum", href: "/forum" },
   ];
 
-  // REMOVED: useEffect and useState for 'user'
-
   const handleLogout = () => {
-    logout(); // 3. Use the context logout function
+    logout();
   };
 
   return (
@@ -37,7 +35,7 @@ export default function NavBar() {
           </div>
           <div className="flex flex-col justify-center">
             <span className="text-[11px] font-black uppercase tracking-tighter leading-none">
-              {user ? user : "Guest_Session"}
+              {user ? user : "Guest"}
             </span>
             <span className="text-[8px] font-mono opacity-40 uppercase tracking-tight mt-1">
               {user ? "Authenticated" : "Click to Sign_In"}

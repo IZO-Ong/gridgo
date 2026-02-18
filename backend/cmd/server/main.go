@@ -42,11 +42,11 @@ func main() {
 	// Post Endpoints
 	mux.HandleFunc("/api/forum/posts", middleware.OptionalAuth(handlers.HandleGetPosts))
 	mux.HandleFunc("/api/forum/posts/create", middleware.RequireAuth(handlers.HandleCreatePost))
-	mux.HandleFunc("/api/forum/post", handlers.HandleGetPostByID)
+	mux.HandleFunc("/api/forum/post", middleware.OptionalAuth(handlers.HandleGetPostByID))
 	mux.HandleFunc("/api/forum/post/delete", middleware.RequireAuth(handlers.HandleDeletePost))
 
 	// Comment Endpoints
-	mux.HandleFunc("/api/forum/comments", handlers.HandleGetComments)
+	mux.HandleFunc("/api/forum/comments", middleware.OptionalAuth(handlers.HandleGetComments))
 	mux.HandleFunc("/api/forum/comment/create", middleware.RequireAuth(handlers.HandleCreateComment))
 	mux.HandleFunc("/api/forum/comment/delete", middleware.RequireAuth(handlers.HandleDeleteComment))
 

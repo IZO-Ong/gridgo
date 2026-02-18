@@ -25,13 +25,14 @@ type Comment struct {
 	CreatorID string    `json:"creator_id"`
 	Creator   User      `gorm:"foreignKey:CreatorID" json:"creator"`
 	Upvotes   int       `gorm:"default:0" json:"upvotes"`
+	UserVote  int       `gorm:"-" json:"user_vote"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type Vote struct {
-	ID         uint   `gorm:"primaryKey"`
-	UserID     string `gorm:"uniqueIndex:idx_user_target"`
-	TargetID   string `gorm:"uniqueIndex:idx_user_target"`
-	TargetType string `json:"target_type"`
-	Value      int    `json:"value"`
+    ID         uint   `gorm:"primaryKey"`
+    UserID     string `gorm:"uniqueIndex:idx_user_target_type"`
+    TargetID   string `gorm:"uniqueIndex:idx_user_target_type"`
+    TargetType string `gorm:"uniqueIndex:idx_user_target_type" json:"target_type"`
+    Value      int    `json:"value"`
 }

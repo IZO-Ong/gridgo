@@ -45,7 +45,7 @@ func HandleGetPosts(w http.ResponseWriter, r *http.Request) {
     userID := middleware.GetUserID(r)
     
     var posts []models.Post
-    db.DB.Preload("Creator").Preload("Maze").Order("created_at desc").Limit(10).Offset(offset).Find(&posts)
+    db.DB.Preload("Creator").Preload("Maze").Preload("Comments").Order("created_at desc").Limit(10).Offset(offset).Find(&posts)
 
     if userID != "" {
         var postIDs []string
@@ -69,18 +69,64 @@ func HandleGetPosts(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(posts)
 }
 
-// HandleGetPostByID fetches a post and its flattened comments
+// HandleGetPostByID fetches a post and its comments
 func HandleGetPostByID(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	var post models.Post
+    id := r.URL.Query().Get("id")
+    userID := middleware.GetUserID(r)
 
-	err := db.DB.Preload("Creator").Preload("Comments.Creator").Where("id = ?", id).First(&post).Error
-	if err != nil {
-		http.Error(w, "POST_NOT_FOUND", 404)
-		return
-	}
+	fmt.Printf("API_CALL: GetPostByID | ID: '%s' | User: '%s'\n", id, userID)
+	
+    var post models.Post
 
-	json.NewEncoder(w).Encode(post)
+    err := db.DB.Preload("Creator").
+                Preload("Maze"). 
+                Preload("Comments.Creator").
+                Where("id = ?", id).
+                First(&post).Error
+    
+    if err != nil {
+        http.Error(w, "POST_NOT_FOUND", 404)
+        return
+    }
+
+    if userID != "" {
+        // 1. POST VOTE HYDRATION
+        var postVote models.Vote
+        // DEBUG: Print these to your terminal
+        fmt.Printf("Querying Vote: User[%s] Target[%s] Type[post]\n", userID, post.ID)
+        
+        // Use Find instead of First to avoid unnecessary 'Record Not Found' errors
+        db.DB.Where("user_id = ? AND target_id = ? AND target_type = 'post'", userID, post.ID).
+              Limit(1).
+              Find(&postVote)
+        
+        post.UserVote = postVote.Value
+        fmt.Printf("Resulting Value: %d\n", post.UserVote)
+
+        // 2. COMMENT VOTE HYDRATION
+        if len(post.Comments) > 0 {
+            var commentIDs []string
+            for _, c := range post.Comments {
+                commentIDs = append(commentIDs, c.ID)
+            }
+
+            var votes []models.Vote
+            db.DB.Where("user_id = ? AND target_id IN ? AND target_type = 'comment'", userID, commentIDs).
+                  Find(&votes)
+
+            voteMap := make(map[string]int)
+            for _, v := range votes {
+                voteMap[v.TargetID] = v.Value
+            }
+
+            for i := range post.Comments {
+                post.Comments[i].UserVote = voteMap[post.Comments[i].ID]
+            }
+        }
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(post)
 }
 
 // HandleDeletePost ensures only the author can purge the thread
@@ -99,39 +145,46 @@ func HandleDeletePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// HandleVote manages the Reddit-style upvote/downvote toggle
+// HandleVote manages the upvote/downvote toggle
 func HandleVote(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r)
-	if userID == "" {
-		http.Error(w, "AUTH_REQUIRED", 401)
-		return
-	}
+    userID := middleware.GetUserID(r)
+    if userID == "" {
+        http.Error(w, "AUTH_REQUIRED", 401)
+        return
+    }
 
-	var req struct {
-		TargetID   string `json:"target_id"`
-		TargetType string `json:"target_type"`
-		Value      int    `json:"value"`
-	}
-	json.NewDecoder(r.Body).Decode(&req)
+    var req struct {
+        TargetID   string `json:"target_id"`
+        TargetType string `json:"target_type"`
+        Value      int    `json:"value"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "INVALID_INPUT", 400)
+        return
+    }
 
-	var vote models.Vote
-	res := db.DB.Where("user_id = ? AND target_id = ?", userID, req.TargetID).First(&vote)
+    var vote models.Vote
+    res := db.DB.Where("user_id = ? AND target_id = ? AND target_type = ?", 
+        userID, req.TargetID, req.TargetType).First(&vote)
 
-	if res.Error == nil {
-		if vote.Value == req.Value {
-			db.DB.Delete(&vote)
-		} else {
-			vote.Value = req.Value
-			db.DB.Save(&vote)
-		}
-	} else {
-		db.DB.Create(&models.Vote{
-			UserID: userID, TargetID: req.TargetID, TargetType: req.TargetType, Value: req.Value,
-		})
-	}
+    if res.Error == nil {
+        if vote.Value == req.Value {
+            db.DB.Delete(&vote)
+        } else {
+            vote.Value = req.Value
+            db.DB.Save(&vote)
+        }
+    } else {
+        db.DB.Create(&models.Vote{
+            UserID:     userID,
+            TargetID:   req.TargetID,
+            TargetType: req.TargetType,
+            Value:      req.Value,
+        })
+    }
 
-	updateVoteCount(req.TargetID, req.TargetType)
-	w.WriteHeader(http.StatusOK)
+    updateVoteCount(req.TargetID, req.TargetType)
+    w.WriteHeader(http.StatusOK)
 }
 
 func updateVoteCount(targetID, targetType string) {
@@ -173,12 +226,34 @@ func HandleCreateComment(w http.ResponseWriter, r *http.Request) {
 // HandleGetComments fetches comments for a post, sorted by upvotes
 func HandleGetComments(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Query().Get("post_id")
+	userID := middleware.GetUserID(r)
 	var comments []models.Comment
 
 	db.DB.Preload("Creator").Where("post_id = ?", postID).Order("upvotes desc").Find(&comments)
+
+	if userID != "" {
+		var commentIDs []string
+		for _, c := range comments {
+			commentIDs = append(commentIDs, c.ID)
+		}
+
+		if len(commentIDs) > 0 {
+			var votes []models.Vote
+			db.DB.Where("user_id = ? AND target_id IN ? AND target_type = 'comment'", userID, commentIDs).Find(&votes)
+
+			voteMap := make(map[string]int)
+			for _, v := range votes {
+				voteMap[v.TargetID] = v.Value
+			}
+
+			for i := range comments {
+				comments[i].UserVote = voteMap[comments[i].ID]
+			}
+		}
+	}
+
 	json.NewEncoder(w).Encode(comments)
 }
-
 // HandleDeleteComment restricts deletion to the comment owner
 func HandleDeleteComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete { return }

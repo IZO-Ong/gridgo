@@ -1,8 +1,9 @@
+import { Post, Comment, Maze, User } from "@/types";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /**
  * Returns a strictly typed record for headers.
- * This avoids the 'undefined' value errors in the fetch spread.
  */
 const getAuthHeaders = (): Record<string, string> => {
   if (typeof window === "undefined") return {};
@@ -10,7 +11,8 @@ const getAuthHeaders = (): Record<string, string> => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// Auth APIs
+// --- Auth APIs ---
+
 export async function login(payload: any) {
   const res = await fetch(`${BASE_URL}/api/login`, {
     method: "POST",
@@ -43,9 +45,12 @@ export async function verifyAccount(email: string, code: string) {
   return true;
 }
 
-// Maze APIs
+// --- Maze APIs ---
 
-export async function generateMaze(formData: FormData, token?: string | null) {
+export async function generateMaze(
+  formData: FormData,
+  token?: string | null
+): Promise<Maze> {
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -59,7 +64,7 @@ export async function generateMaze(formData: FormData, token?: string | null) {
   return res.json();
 }
 
-export async function renderMazeImage(mazeData: any) {
+export async function renderMazeImage(mazeData: any): Promise<Blob> {
   const response = await fetch(`${BASE_URL}/api/maze/render`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -69,11 +74,6 @@ export async function renderMazeImage(mazeData: any) {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || "SYSTEM_RENDER_FAILURE");
-  }
-
-  const contentType = response.headers.get("content-type");
-  if (!contentType || !contentType.includes("image/png")) {
-    throw new Error("INVALID_PAYLOAD_FORMAT");
   }
 
   return response.blob();
@@ -94,13 +94,13 @@ export async function solveMaze(mazeData: any, algorithm: string) {
   return response.json();
 }
 
-export async function getMazeById(id: string) {
+export async function getMazeById(id: string): Promise<Maze> {
   const response = await fetch(`${BASE_URL}/api/maze/get?id=${id}`);
   if (!response.ok) throw new Error("MAZE_NOT_FOUND");
   return response.json();
 }
 
-export async function deleteMaze(mazeId: string) {
+export async function deleteMaze(mazeId: string): Promise<boolean> {
   const res = await fetch(`${BASE_URL}/api/maze/delete?id=${mazeId}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
@@ -116,15 +116,15 @@ export async function updateThumbnail(id: string, thumbnail: string) {
   });
 }
 
-// Forum and Profile APIs
+// --- Forum and Profile APIs ---
 
-export async function getProfile(username: string) {
+export async function getProfile(username: string): Promise<User> {
   const res = await fetch(`${BASE_URL}/api/profile?username=${username}`);
   if (!res.ok) throw new Error("USER_NOT_FOUND");
   return res.json();
 }
 
-export async function getMyMazes() {
+export async function getMyMazes(): Promise<Maze[]> {
   const res = await fetch(`${BASE_URL}/api/maze/my-mazes`, {
     headers: getAuthHeaders(),
   });
@@ -132,31 +132,38 @@ export async function getMyMazes() {
   return res.json();
 }
 
-export async function getPosts(offset: number = 0) {
-  const res = await fetch(`${BASE_URL}/api/forum/posts?offset=${offset}`);
+export async function getPosts(offset: number = 0): Promise<Post[]> {
+  const res = await fetch(`${BASE_URL}/api/forum/posts?offset=${offset}`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) return [];
   return res.json();
 }
 
-export async function getPostById(id: string) {
-  const res = await fetch(`${BASE_URL}/api/forum/post?id=${id}`);
-  if (!res.ok) throw new Error("THREAD_FETCH_FAILURE");
+export const getPostById = async (id: string): Promise<Post> => {
+  const res = await fetch(`${BASE_URL}/api/forum/post?id=${id}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(), // Fixed: Now sends token to hydrate user_vote
+    },
+  });
+
+  if (!res.ok) throw new Error("THREAD_FETCH_FAILED");
   return res.json();
-}
+};
 
 export async function createPost(postData: {
   title: string;
   content: string;
   maze_id?: string;
-}) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...getAuthHeaders(),
-  };
-
+}): Promise<boolean> {
   const res = await fetch(`${BASE_URL}/api/forum/posts/create`, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(postData),
   });
 
@@ -168,30 +175,29 @@ export async function castVote(
   target_id: string,
   target_type: "post" | "comment",
   value: number
-) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...getAuthHeaders(),
-  };
-
+): Promise<boolean> {
   const res = await fetch(`${BASE_URL}/api/forum/vote`, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({ target_id, target_type, value }),
   });
 
   return res.ok;
 }
 
-export async function createComment(post_id: string, content: string) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...getAuthHeaders(),
-  };
-
+export async function createComment(
+  post_id: string,
+  content: string
+): Promise<Comment> {
   const res = await fetch(`${BASE_URL}/api/forum/comment/create`, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({ post_id, content }),
   });
 

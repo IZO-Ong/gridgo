@@ -44,7 +44,7 @@ export default function MazeCanvas({
   } = useMazeCanvas(maze);
 
   const totalNodes = (highlights?.length || 0) + (solutionPath?.length || 0);
-  const stepSize = useMemo(() => Math.max(1, totalNodes / 720), [totalNodes]);
+  const stepSize = useMemo(() => Math.max(1, totalNodes / 540), [totalNodes]);
 
   useEffect(() => {
     setVisibleHighlights(0);

@@ -52,7 +52,22 @@ export default function ForumCard({ post }: { post: Post }) {
         <div className="flex-1 flex flex-col justify-between h-full overflow-hidden">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[9px] font-black uppercase opacity-40">
-              <span>u/{post.creator?.username || "anon"}</span>
+              {/* User Profile Link */}
+              <Link
+                href={`/profile/${post.creator?.username}`}
+                onClick={(e) => e.stopPropagation()} // Crucial: prevents opening the post
+                className="flex items-center gap-1.5 hover:opacity-100 transition-opacity group/user"
+              >
+                <div className="w-4 h-4 border border-black rounded-full bg-black flex items-center justify-center shrink-0 overflow-hidden">
+                  <span className="text-[7px] text-white font-black leading-none">
+                    {post.creator?.username?.[0].toUpperCase() || "A"}
+                  </span>
+                </div>
+                <span className="group-hover/user:underline decoration-1">
+                  {post.creator?.username || "anon"}
+                </span>
+              </Link>
+
               <span>•</span>
               <span>{new Date(post.created_at).toLocaleDateString()}</span>
             </div>

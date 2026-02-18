@@ -90,7 +90,6 @@ export default function PostDetailPage() {
         Return_to_Feed
       </button>
 
-      {/* Main Post Section: items-stretch ensures Sidebar h-full works */}
       <div className="flex items-stretch border-4 border-black bg-white shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
         <VoteSidebar
           upvotes={post.upvotes}
@@ -100,10 +99,26 @@ export default function PostDetailPage() {
 
         <div className="flex-1 p-8 flex items-start gap-8">
           <div className="flex-1 space-y-6 flex flex-col">
-            <div className="text-xs font-black uppercase opacity-40">
-              u/{post.creator?.username} •{" "}
-              {new Date(post.created_at).toLocaleString()}
+            {/* --- UPDATED POST HEADER --- */}
+            <div className="text-xs font-black uppercase opacity-40 flex items-center gap-2">
+              <Link
+                href={`/profile/${post.creator?.username}`}
+                className="flex items-center gap-2 hover:opacity-100 transition-opacity group"
+              >
+                <div className="w-6 h-6 border-2 border-black rounded-full bg-black flex items-center justify-center shrink-0">
+                  <span className="text-[10px] text-white font-black leading-none">
+                    {post.creator?.username?.[0].toUpperCase() || "A"}
+                  </span>
+                </div>
+                <span className="group-hover:underline">
+                  {post.creator?.username}
+                </span>
+              </Link>
+              <span>•</span>
+              <span>{new Date(post.created_at).toLocaleString()}</span>
             </div>
+            {/* --------------------------- */}
+
             <h1 className="text-4xl font-black uppercase tracking-tighter leading-none">
               {post.title}
             </h1>
@@ -157,12 +172,26 @@ export default function PostDetailPage() {
                 onVote={(v) => handleCommentVote(comment.id, v)}
               />
               <div className="flex-1 p-4 space-y-2">
-                <div className="flex justify-between text-[10px] font-black uppercase opacity-40">
-                  <span>u/{comment.creator?.username}</span>
+                <div className="flex justify-between items-center text-[10px] font-black uppercase opacity-40">
+                  <Link
+                    href={`/profile/${comment.creator?.username}`}
+                    className="flex items-center gap-1.5 hover:opacity-100 transition-opacity group"
+                  >
+                    <div className="w-4 h-4 border border-black rounded-full bg-black flex items-center justify-center shrink-0">
+                      <span className="text-[7px] text-white font-black leading-none">
+                        {comment.creator?.username?.[0].toUpperCase() || "A"}
+                      </span>
+                    </div>
+                    <span className="group-hover:underline">
+                      {comment.creator?.username}
+                    </span>
+                  </Link>
                   <span>
                     {new Date(comment.created_at).toLocaleDateString()}
                   </span>
                 </div>
+                {/* ------------------------------- */}
+
                 <p className="text-sm font-medium leading-relaxed">
                   {comment.content}
                 </p>

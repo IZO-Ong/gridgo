@@ -1,6 +1,7 @@
 import NavBar from "@/components/layout/NavBar";
 import MazeMargin from "@/components/layout/MazeMargin";
-import { AuthProvider } from "@/context/AuthContext"; // Import your provider
+import { AuthProvider } from "@/context/AuthContext";
+import Image from "next/image";
 import "./globals.css";
 
 export default function RootLayout({
@@ -21,9 +22,22 @@ export default function RootLayout({
           >
             <div className="p-8 flex flex-col">
               <header className="pt-4 pb-2 flex justify-between items-end border-b-4 border-black bg-white">
-                <h1 className="text-4xl font-black uppercase tracking-tighter">
-                  GRIDGO
-                </h1>
+                <div className="flex items-center gap-4 cursor-default">
+                  <h1 className="text-4xl font-black uppercase tracking-tighter">
+                    GRIDGO
+                  </h1>
+
+                  <div className="relative w-12 h-12 mb-1">
+                    <Image
+                      src="/gopher-maze.png"
+                      alt="GridGo Mascot"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                </div>
+
                 <NavBar />
               </header>
               <main className="pt-8">{children}</main>

@@ -9,6 +9,7 @@ const PADDING = 800;
 interface MazeCanvasProps {
   maze: MazeData;
   showSave?: boolean;
+  showShare?: boolean;
   highlights?: [number, number][];
   solutionPath?: [number, number][];
   overrideStart?: [number, number];
@@ -19,7 +20,8 @@ interface MazeCanvasProps {
 
 export default function MazeCanvas({
   maze,
-  showSave = true,
+  showSave = false,
+  showShare = false,
   highlights = [],
   solutionPath = [],
   overrideStart,
@@ -61,6 +63,13 @@ export default function MazeCanvas({
     } catch (e: any) {
       alert(`FAILED TO SAVE: ${e.message}`);
     }
+  };
+
+  const handleShare = () => {
+    if (!maze.id) return;
+    const url = `${window.location.origin}/solve?id=${maze.id}`;
+    navigator.clipboard.writeText(url);
+    alert("ACCESS_LINK_COPIED_TO_CLIPBOARD");
   };
 
   useEffect(() => {
@@ -257,25 +266,47 @@ export default function MazeCanvas({
         </div>
       </div>
 
-      {showSave && (
+      {(showSave || showShare) && (
         <div className="absolute bottom-6 left-6 border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-30">
-          <button
-            onClick={handleSave}
-            className="p-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
+          {showSave ? (
+            <button
+              onClick={handleSave}
+              title="Save to PNG"
+              className="p-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
             >
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
-            </svg>
-          </button>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              onClick={handleShare}
+              title="Share Matrix Link"
+              className="p-3 hover:bg-black hover:text-white transition-colors cursor-pointer"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                stroke="currentColor"
+                strokeWidth="1"
+              >
+                <path d="M15,5 L15,9 C7,9 4,14 4,20 C7,15 11,13 15,13 L15,17 L22,10 L15,5 Z" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 

@@ -101,27 +101,30 @@ export default function Home() {
             tempCtx.fillStyle = "white";
             tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-            const sourceWidth = canvas.width;
-            const sourceHeight = canvas.height;
+            const PADDING = 800;
+
+            const mazeInternalWidth = canvas.width - PADDING * 2;
+            const mazeInternalHeight = canvas.height - PADDING * 2;
 
             const scale = Math.max(
-              tempCanvas.width / sourceWidth,
-              tempCanvas.height / sourceHeight
+              tempCanvas.width / mazeInternalWidth,
+              tempCanvas.height / mazeInternalHeight
             );
 
-            const xOffset = (tempCanvas.width - sourceWidth * scale) / 2;
-            const yOffset = (tempCanvas.height - sourceHeight * scale) / 2;
+            const xOffset = (tempCanvas.width - mazeInternalWidth * scale) / 2;
+            const yOffset =
+              (tempCanvas.height - mazeInternalHeight * scale) / 2;
 
             tempCtx.drawImage(
               canvas,
-              0,
-              0,
-              sourceWidth,
-              sourceHeight,
+              PADDING,
+              PADDING,
+              mazeInternalWidth,
+              mazeInternalHeight,
               xOffset,
               yOffset,
-              sourceWidth * scale,
-              sourceHeight * scale
+              mazeInternalWidth * scale,
+              mazeInternalHeight * scale
             );
 
             const b64 = tempCanvas.toDataURL("image/webp", 0.6);
@@ -140,7 +143,7 @@ export default function Home() {
             }
           }
         }
-      }, 200);
+      }, 400);
     }
   };
 
@@ -189,7 +192,7 @@ export default function Home() {
         <div className="relative flex-1 bg-white overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.05] pointer-events-none" />
           {activeMaze ? (
-            <MazeCanvas maze={activeMaze} />
+            <MazeCanvas maze={activeMaze} showSave={true} showShare={false} />
           ) : (
             <div className="h-full w-full flex items-center justify-center">
               <p className="opacity-20 tracking-[0.5em] font-bold uppercase text-2xl text-center px-12">

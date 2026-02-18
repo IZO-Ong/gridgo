@@ -19,7 +19,7 @@ const ALGORITHMS = [
   { id: "recursive", label: "DFS_BACKTRACKER" },
 ];
 
-export default function Home() {
+export default function CreatePage() {
   const [activeMaze, setActiveMaze] = useState<MazeData | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
 

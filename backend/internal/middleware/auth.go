@@ -46,3 +46,32 @@ func OptionalAuth(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
+
+func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, "AUTHENTICATION_REQUIRED", http.StatusUnauthorized)
+			return
+		}
+
+		tokenString := authHeader[7:]
+		
+		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+			return GetJWTKey(), nil
+		})
+
+		if err == nil && token.Valid {
+			if claims, ok := token.Claims.(jwt.MapClaims); ok {
+				if id, ok := claims["user_id"].(string); ok {
+					ctx := context.WithValue(r.Context(), UserIDKey, id)
+					next(w, r.WithContext(ctx))
+					return
+				}
+			}
+		}
+
+		http.Error(w, "INVALID_OR_EXPIRED_TOKEN", http.StatusUnauthorized)
+	}
+}

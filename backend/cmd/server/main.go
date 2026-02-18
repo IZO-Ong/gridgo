@@ -27,16 +27,25 @@ func main() {
 
 	mux := http.NewServeMux()
 
-    // Maze Routes
+    // Maze Endpoints
 	mux.HandleFunc("/api/maze/generate", middleware.OptionalAuth(handlers.HandleGenerateMaze))
 	mux.HandleFunc("/api/maze/get", handlers.HandleGetMaze)
-	mux.HandleFunc("/api/maze/delete", middleware.OptionalAuth(handlers.HandleDeleteMaze))
+	mux.HandleFunc("/api/maze/delete", middleware.RequireAuth(handlers.HandleDeleteMaze))
 	mux.HandleFunc("/api/maze/solve", handlers.HandleSolveMaze)
 	mux.HandleFunc("/api/maze/render", handlers.HandleRenderMaze)
 	mux.HandleFunc("/api/maze/thumbnail", handlers.HandleUpdateThumbnail)
 
-    // User & Profile Routes
+    // User & Profile Endpoints
     mux.HandleFunc("/api/profile", handlers.HandleGetProfile)
+
+	// Post Endpoints
+	mux.HandleFunc("/api/forum/post", handlers.HandleGetPostByID)
+	mux.HandleFunc("/api/forum/post/delete", middleware.RequireAuth(handlers.HandleDeletePost))
+
+	// Comment Endpoints
+	mux.HandleFunc("/api/forum/comments", handlers.HandleGetComments) // Public
+	mux.HandleFunc("/api/forum/comment/create", middleware.RequireAuth(handlers.HandleCreateComment)) // Protected
+	mux.HandleFunc("/api/forum/comment/delete", middleware.RequireAuth(handlers.HandleDeleteComment)) // Protected
 
     // Auth Routes
 	mux.HandleFunc("/api/login", handlers.HandleLogin)

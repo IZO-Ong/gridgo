@@ -3,8 +3,6 @@ package middleware
 import (
 	"net/http"
 	"os"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func EnableCORS(next http.Handler) http.Handler {
@@ -19,21 +17,4 @@ func EnableCORS(next http.Handler) http.Handler {
         }
         next.ServeHTTP(w, r)
     })
-}
-
-func GetUserIDFromRequest(r *http.Request) string {
-	authHeader := r.Header.Get("Authorization")
-	if len(authHeader) < 8 { return "" }
-
-	tokenString := authHeader[7:]
-	token, _ := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-		return GetJWTKey(), nil
-	})
-
-	if token != nil && token.Valid {
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			return claims["user_id"].(string)
-		}
-	}
-	return ""
 }
